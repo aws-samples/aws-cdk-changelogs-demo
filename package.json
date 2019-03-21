@@ -1,6 +1,7 @@
 {
   "description": "Setup for tests for various functions",
   "devDependencies": {
+    "aws-cdk": "^0.24.0",
     "@aws-cdk/cdk": "^0.24.0",
     "@aws-cdk/aws-cloudfront": "^0.24.0",
     "@aws-cdk/aws-dynamodb": "^0.24.0",
