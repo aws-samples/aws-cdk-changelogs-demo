@@ -61,3 +61,7 @@ You will need to supply you own domain name and SSL cert if you want to deploy t
   "acmCertRef": "<your cert arn>"
 }
 ```
+
+## License Summary
+
+ This sample code is made available under a modified MIT license. See the LICENSE file.
