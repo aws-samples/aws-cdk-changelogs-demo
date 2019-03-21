@@ -40,6 +40,17 @@ Deploying from scratch typically takes around 30 minutes (most of which is
 spent on a CloudFront distribution rollout). While you wait you can
 check out [the CDK app](/changelogs-md.js) that defines all the infrastructure.
 
+If you want to see ahead of time what CloudFormation templates will be deployed
+then run:
+
+```bash
+npm run-script synth
+```
+
+Then check the contents of the `/synth` folder that is generated. You will find
+several thousands lines of generated CloudFormation template defining the
+underlying resources of the application stack.
+
 If you want to change part of the application and redeploy just that part
 you can do so with a command like:
 

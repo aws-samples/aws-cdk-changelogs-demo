@@ -23,7 +23,8 @@
   },
   "scripts": {
     "setup": "npm install; cd app; npm install",
-    "deploy": "cdk deploy"
+    "deploy": "cdk deploy",
+    "synth": "cdk synth --output synth"
   },
   "dependencies": {
     "npm": "^6.7.0"
