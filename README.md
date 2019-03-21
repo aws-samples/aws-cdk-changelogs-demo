@@ -12,6 +12,8 @@ a human readable HTML and machine readable JSON file with the changelog content.
 
 ![architecture diagram](/docs/architecture.png)
 
+For a full explanation of this architecture see the [/docs](/docs) folder
+
 ### Development Environment
 
 This application is coded, built, and deployed using [node.js](https://nodejs.org/en/).
