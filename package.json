@@ -1,0 +1,30 @@
+{
+  "description": "Setup for tests for various functions",
+  "devDependencies": {
+    "@aws-cdk/cdk": "^0.24.0",
+    "@aws-cdk/aws-cloudfront": "^0.24.0",
+    "@aws-cdk/aws-dynamodb": "^0.24.0",
+    "@aws-cdk/aws-ec2": "^0.24.0",
+    "@aws-cdk/aws-ecs": "^0.24.0",
+    "@aws-cdk/aws-elasticache": "^0.24.0",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^0.24.0",
+    "@aws-cdk/aws-events": "^0.24.0",
+    "@aws-cdk/aws-lambda": "^0.24.0",
+    "@aws-cdk/aws-lambda-event-sources": "^0.24.0",
+    "@aws-cdk/aws-s3": "^0.24.0",
+    "@aws-cdk/aws-s3-deployment": "^0.24.0",
+    "@aws-cdk/aws-sns": "^0.24.0",
+    "@aws-cdk/aws-apigateway": "^0.24.0",
+    "chai": "3.5.0",
+    "copy-dir": "0.4.0",
+    "lodash": "4.17.11",
+    "mocha": "6.0.2"
+  },
+  "scripts": {
+    "setup": "npm install; cd app; npm install",
+    "deploy": "cdk deploy"
+  },
+  "dependencies": {
+    "npm": "^6.7.0"
+  }
+}

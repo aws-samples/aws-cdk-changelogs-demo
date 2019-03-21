@@ -1,0 +1,25 @@
+{
+  "description": "",
+  "dependencies": {
+    "async": "2.0.1",
+    "request-promise-native": "1.0.7",
+    "changes-stream": "2.2.0",
+    "aws-sdk": "2.425.0",
+    "cheerio": "0.20.0",
+    "highlight.js": "9.6.0",
+    "lodash": "4.17.11",
+    "marked": "0.5.2",
+    "octonode": "0.9.5",
+    "semver-parser": "3.0.0",
+    "socket.io": "2.2.0",
+    "socket.io-emitter": "3.1.1",
+    "find-versions": "3.0.0"
+  },
+  "devDependencies": {
+    "chai": "3.5.0",
+    "mocha": "6.0.2"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/mocha test/*"
+  }
+}

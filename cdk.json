@@ -1,0 +1,10 @@
+{
+  "app": "node changelogs-md.js",
+  "context": {
+    "availability-zones:account=449876148567:region=us-east-2": [
+      "us-east-2a",
+      "us-east-2b",
+      "us-east-2c"
+    ]
+  }
+}
