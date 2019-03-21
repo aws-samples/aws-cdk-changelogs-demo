@@ -5,8 +5,8 @@ serverless compute platforms such as [AWS Lambda](https://aws.amazon.com/lambda/
 and [AWS Fargate](https://aws.amazon.com/blogs/aws/aws-fargate/). It is built
 and deployed using the [AWS Cloud Development Kit (CDK)](https://docs.aws.amazon.com/CDK/latest/userguide/what-is.html)
 
-This application is a Github changelog crawler and parser. It follows the NPM
-registry to watch for newly published NPM packages, then checks the Github
+This application is a Github changelog crawler and parser. It follows the [NPM](https://www.npmjs.com/), [PyPI](https://pypi.org/), and [RubyGems](https://rubygems.org/)
+package registries to watch for newly published code, then checks the Github
 for each package for changelog files, parses the file, and then exposes both
 a human readable HTML and machine readable JSON file with the changelog content.
 

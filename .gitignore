@@ -6,6 +6,7 @@ domain.json
 .DS_Store
 npm-debug.log
 ~$architecture.pptx
+synth
 
 # These files are dynamically copied in at build time
 app/npm-follower/lib
