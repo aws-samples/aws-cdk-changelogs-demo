@@ -1,4 +1,4 @@
-const cdk = require('@aws-cdk/cdk');
+const cdk = require('@aws-cdk/core');
 const elasticache = require('@aws-cdk/aws-elasticache');
 const ec2 = require('@aws-cdk/aws-ec2');
 
@@ -21,7 +21,7 @@ class RedisCluster extends cdk.Construct {
 
     this.connections = new ec2.Connections({
       securityGroups: [this.securityGroup],
-      defaultPortRange: new ec2.TcpPort(6379)
+      defaultPort: ec2.Port.tcp(6379)
     });
 
     // The cluster resource itself.

@@ -1,25 +1,25 @@
 {
   "description": "Setup for tests for various functions",
   "devDependencies": {
-    "aws-cdk": "^0.24.0",
-    "@aws-cdk/cdk": "^0.24.0",
-    "@aws-cdk/aws-cloudfront": "^0.24.0",
-    "@aws-cdk/aws-dynamodb": "^0.24.0",
-    "@aws-cdk/aws-ec2": "^0.24.0",
-    "@aws-cdk/aws-ecs": "^0.24.0",
-    "@aws-cdk/aws-elasticache": "^0.24.0",
-    "@aws-cdk/aws-elasticloadbalancingv2": "^0.24.0",
-    "@aws-cdk/aws-events": "^0.24.0",
-    "@aws-cdk/aws-lambda": "^0.24.0",
-    "@aws-cdk/aws-lambda-event-sources": "^0.24.0",
-    "@aws-cdk/aws-s3": "^0.24.0",
-    "@aws-cdk/aws-s3-deployment": "^0.24.0",
-    "@aws-cdk/aws-sns": "^0.24.0",
-    "@aws-cdk/aws-apigateway": "^0.24.0",
+    "aws-cdk": "^0.38.0",
+    "@aws-cdk/core": "^0.38.0",
+    "@aws-cdk/aws-cloudfront": "^0.38.0",
+    "@aws-cdk/aws-dynamodb": "^0.38.0",
+    "@aws-cdk/aws-ec2": "^0.38.0",
+    "@aws-cdk/aws-ecs": "^0.38.0",
+    "@aws-cdk/aws-elasticache": "^0.38.0",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^0.38.0",
+    "@aws-cdk/aws-events": "^0.38.0",
+    "@aws-cdk/aws-lambda": "^0.38.0",
+    "@aws-cdk/aws-lambda-event-sources": "^0.38.0",
+    "@aws-cdk/aws-s3": "^0.38.0",
+    "@aws-cdk/aws-s3-deployment": "^0.38.0",
+    "@aws-cdk/aws-sns": "^0.38.0",
+    "@aws-cdk/aws-apigateway": "^0.38.0",
     "chai": "3.5.0",
     "copy-dir": "0.4.0",
     "lodash": "4.17.11",
-    "mocha": "6.0.2"
+    "mocha": "6.1.4"
   },
   "scripts": {
     "setup": "npm install; cd app; npm install",
@@ -27,6 +27,6 @@
     "synth": "cdk synth --output synth"
   },
   "dependencies": {
-    "npm": "^6.7.0"
+    "npm": "6.10.0"
   }
 }

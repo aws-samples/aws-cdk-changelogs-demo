@@ -7,6 +7,8 @@ domain.json
 npm-debug.log
 ~$architecture.pptx
 synth
+cdk.out
+cdk.context.json
 
 # These files are dynamically copied in at build time
 app/npm-follower/lib

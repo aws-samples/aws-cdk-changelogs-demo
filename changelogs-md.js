@@ -1,4 +1,4 @@
-const cdk = require('@aws-cdk/cdk');
+const cdk = require('@aws-cdk/core');
 const ecs = require('@aws-cdk/aws-ecs');
 const ec2 = require('@aws-cdk/aws-ec2');
 const dynamodb = require('@aws-cdk/aws-dynamodb');
@@ -35,7 +35,7 @@ class SharedResources extends cdk.Stack {
     super(parent, id, props);
 
     // Network to run everything in
-    const vpc = new ec2.VpcNetwork(this, 'NpmFollowerVpc', {
+    const vpc = new ec2.Vpc(this, 'NpmFollowerVpc', {
       maxAZs: 2,
       natGateways: 1
     });
@@ -43,7 +43,17 @@ class SharedResources extends cdk.Stack {
     // A table to store the list of changelogs and their metadata in
     const changelogsTable = new dynamodb.Table(this, 'Changelogs', {
       partitionKey: { name: 'changelog', type: dynamodb.AttributeType.String },
-      billingMode: dynamodb.BillingMode.PayPerRequest
+      billingMode: dynamodb.BillingMode.Provisioned
+    });
+
+    changelogsTable.autoScaleReadCapacity({
+      minCapacity: 211,
+      maxCapacity: 300
+    });
+
+    changelogsTable.autoScaleWriteCapacity({
+      minCapacity: 5,
+      maxCapacity: 20
     });
 
     // A table to store the list of feeds
@@ -108,10 +118,10 @@ class Crawler extends cdk.Stack {
 
     // Create a lambda that does the crawl
     const crawlLambda = new lambda.Function(this, 'crawl-lambda', {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: 'crawl.handle',
       code: lambda.Code.asset('./app/crawl'),
-      timeout: 30,
+      timeout: cdk.Duration.seconds(30),
       vpc: props.vpc,
       environment: {
         GITHUB_CLIENT_ID: githubSecrets.clientId,
@@ -153,10 +163,10 @@ class Recrawler extends cdk.Stack {
 
     // Create a lambda that recrawls changelogs discovered in the past
     const recrawlLambda = new lambda.Function(this, 'recrawl', {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: 'recrawl.handle',
       code: lambda.Code.asset('./app/recrawl'),
-      timeout: 360,
+      timeout: cdk.Duration.minutes(5),
       environment: {
         CHANGELOGS_TABLE_NAME: props.changelogsTable.tableName,
         DISCOVERED_TOPIC_NAME: props.toCrawlTopic.topicArn
@@ -219,7 +229,7 @@ class NpmFollower extends cdk.Stack {
     // Launch the image as a service in Fargate
     this.npmFollower = new ecs.FargateService(this, 'NpmFollower', {
       assignPublicIp: true,
-      cluster: props.cluster,  // Required
+      cluster: props.cluster, // Required
       cpu: '256',
       memoryMiB: '512',
       desiredCount: 1,
@@ -238,10 +248,10 @@ class PyPIFollower extends cdk.Stack {
 
     // Create the lambda
     const pypiFollower = new lambda.Function(this, 'pypi-follower', {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: 'pypi-recent.handle',
       code: lambda.Code.asset('./app/pypi-recent'),
-      timeout: 60,
+      timeout: cdk.Duration.minutes(1),
       environment: {
         CHANGELOGS_TABLE_NAME: props.changelogsTable.tableName,
         DISCOVERED_TOPIC_NAME: props.toCrawlTopic.topicArn
@@ -268,10 +278,10 @@ class RubyGemFollower extends cdk.Stack {
 
     // Create the lambda
     const rubygemFollower = new lambda.Function(this, 'rubygem-follower', {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: 'rubygem-recent.handle',
       code: lambda.Code.asset('./app/rubygem-recent'),
-      timeout: 60,
+      timeout: cdk.Duration.minutes(1),
       environment: {
         CHANGELOGS_TABLE_NAME: props.changelogsTable.tableName,
         DISCOVERED_TOPIC_NAME: props.toCrawlTopic.topicArn
@@ -325,7 +335,7 @@ class RecentlyCrawled extends cdk.Stack {
 
     // Create a lambda that returns autocomplete results
     const recentlyCrawled = new lambda.Function(this, 'recently-crawled', {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: 'recently-crawled.handle',
       code: lambda.Code.asset('./app/recently-crawled'),
       environment: {
@@ -352,7 +362,7 @@ class Autocompleter extends cdk.Stack {
 
     // Create a lambda that returns autocomplete results
     const autocomplete = new lambda.Function(this, 'autocomplete', {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: 'autocomplete.handle',
       code: lambda.Code.asset('./app/autocomplete'),
       environment: {
@@ -384,7 +394,7 @@ class WebFrontend extends cdk.Stack {
 
     // Create a lambda that regenerates the homepage
     const regenerateHomepage = new lambda.Function(this, 'regenerate-homepage', {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: 'regenerate-homepage.handle',
       code: lambda.Code.asset('./app/regenerate-homepage'),
       environment: {
@@ -490,76 +500,72 @@ class GlobalDistribution extends cdk.Stack {
   }
 }
 
-class NpmFollowerApp extends cdk.App {
-  constructor(argv) {
-    super(argv);
+const app = new cdk.App();
 
-    // The stack that holds the shared underlying resources.
-    const sharedResources = new SharedResources(this, 'shared-resources');
+// The stack that holds the shared underlying resources.
+const sharedResources = new SharedResources(app, 'shared-resources');
 
-    // The micro components that make up the application
-    this.crawler = new Crawler(this, 'crawler', {
-      vpc: sharedResources.vpc,
-      redis: sharedResources.redis,
-      changelogsTable: sharedResources.changelogsTable,
-      feedsTable: sharedResources.feedsTable,
-      searchIndexTable: sharedResources.searchIndexTable,
-      webBucket: sharedResources.webBucket,
-      apiBucket: sharedResources.apiBucket,
-      toCrawlTopic: sharedResources.toCrawlTopic
-    });
+// The micro components that make up the application
+this.crawler = new Crawler(app, 'crawler', {
+  vpc: sharedResources.vpc,
+  redis: sharedResources.redis,
+  changelogsTable: sharedResources.changelogsTable,
+  feedsTable: sharedResources.feedsTable,
+  searchIndexTable: sharedResources.searchIndexTable,
+  webBucket: sharedResources.webBucket,
+  apiBucket: sharedResources.apiBucket,
+  toCrawlTopic: sharedResources.toCrawlTopic
+});
 
-    this.recrawler = new Recrawler(this, 'recrawler', {
-      changelogsTable: sharedResources.changelogsTable,
-      toCrawlTopic: sharedResources.toCrawlTopic
-    });
+this.recrawler = new Recrawler(app, 'recrawler', {
+  changelogsTable: sharedResources.changelogsTable,
+  toCrawlTopic: sharedResources.toCrawlTopic
+});
 
-    this.recentlyCrawled = new RecentlyCrawled(this, 'recently-crawled', {
-      feedsTable: sharedResources.feedsTable,
-      apiBucket: sharedResources.apiBucket
-    });
+this.recentlyCrawled = new RecentlyCrawled(app, 'recently-crawled', {
+  feedsTable: sharedResources.feedsTable,
+  apiBucket: sharedResources.apiBucket
+});
 
-    this.npmFollower = new NpmFollower(this, 'npm-follower', {
-      changelogsTable: sharedResources.changelogsTable,
-      toCrawlTopic: sharedResources.toCrawlTopic,
-      cluster: sharedResources.cluster,
-    });
+this.npmFollower = new NpmFollower(app, 'npm-follower', {
+  changelogsTable: sharedResources.changelogsTable,
+  toCrawlTopic: sharedResources.toCrawlTopic,
+  cluster: sharedResources.cluster,
+});
 
-    this.pypiFollower = new PyPIFollower(this, 'pypi-follower', {
-      changelogsTable: sharedResources.changelogsTable,
-      toCrawlTopic: sharedResources.toCrawlTopic
-    });
+this.pypiFollower = new PyPIFollower(app, 'pypi-follower', {
+  changelogsTable: sharedResources.changelogsTable,
+  toCrawlTopic: sharedResources.toCrawlTopic
+});
 
-    this.rubygemFollower = new RubyGemFollower(this, 'rubygem-follower', {
-      changelogsTable: sharedResources.changelogsTable,
-      toCrawlTopic: sharedResources.toCrawlTopic
-    });
+this.rubygemFollower = new RubyGemFollower(app, 'rubygem-follower', {
+  changelogsTable: sharedResources.changelogsTable,
+  toCrawlTopic: sharedResources.toCrawlTopic
+});
 
-    const broadcast = new BroadcastSocket(this, 'broadcast', {
-      redis: sharedResources.redis,
-      cluster: sharedResources.cluster
-    });
+const broadcast = new BroadcastSocket(app, 'broadcast', {
+  redis: sharedResources.redis,
+  cluster: sharedResources.cluster
+});
 
-    const autocompleter = new Autocompleter(this, 'autocomplete', {
-      searchIndexTable: sharedResources.searchIndexTable
-    });
+const autocompleter = new Autocompleter(app, 'autocomplete', {
+  searchIndexTable: sharedResources.searchIndexTable
+});
 
-    this.webFrontend = new WebFrontend(this, 'web-frontend', {
-      changelogsTable: sharedResources.changelogsTable,
-      feedsTable: sharedResources.feedsTable,
-      webBucket: sharedResources.webBucket,
-      staticBucket: sharedResources.staticBucket
-    });
+this.webFrontend = new WebFrontend(app, 'web-frontend', {
+  changelogsTable: sharedResources.changelogsTable,
+  feedsTable: sharedResources.feedsTable,
+  webBucket: sharedResources.webBucket,
+  staticBucket: sharedResources.staticBucket
+});
 
-    // A Cloudfront distribution that serves the website
-    this.dist = new GlobalDistribution(this, 'cloudfront-distribution', {
-      webBucket: sharedResources.webBucket,
-      apiBucket: sharedResources.apiBucket,
-      staticBucket: sharedResources.staticBucket,
-      autocompleteGateway: autocompleter.autocompleteGateway,
-      broadcast: broadcast
-    });
-  }
-}
+// A Cloudfront distribution that serves the website
+this.dist = new GlobalDistribution(app, 'cloudfront-distribution', {
+  webBucket: sharedResources.webBucket,
+  apiBucket: sharedResources.apiBucket,
+  staticBucket: sharedResources.staticBucket,
+  autocompleteGateway: autocompleter.autocompleteGateway,
+  broadcast: broadcast
+});
 
-new NpmFollowerApp().run();
+app.synth();
