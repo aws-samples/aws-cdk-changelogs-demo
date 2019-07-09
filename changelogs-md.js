@@ -1,5 +1,6 @@
 const cdk = require('@aws-cdk/core');
 const ecs = require('@aws-cdk/aws-ecs');
+const ecsPatterns = require('@aws-cdk/aws-ecs-patterns');
 const ec2 = require('@aws-cdk/aws-ec2');
 const dynamodb = require('@aws-cdk/aws-dynamodb');
 const sns = require('@aws-cdk/aws-sns');
@@ -9,6 +10,7 @@ const lambda = require('@aws-cdk/aws-lambda');
 const lambdaEvents = require('@aws-cdk/aws-lambda-event-sources');
 const apiGateway = require('@aws-cdk/aws-apigateway');
 const events = require('@aws-cdk/aws-events');
+const targets = require('@aws-cdk/aws-events-targets');
 const cloudfront = require('@aws-cdk/aws-cloudfront');
 const redis = require('./custom-constructs/redis');
 const copydir = require('copy-dir');
@@ -42,31 +44,30 @@ class SharedResources extends cdk.Stack {
 
     // A table to store the list of changelogs and their metadata in
     const changelogsTable = new dynamodb.Table(this, 'Changelogs', {
-      partitionKey: { name: 'changelog', type: dynamodb.AttributeType.String },
+      partitionKey: { name: 'changelog', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.Provisioned
     });
 
-    changelogsTable.autoScaleReadCapacity({
+    const readScaling = changelogsTable.autoScaleReadCapacity({
       minCapacity: 211,
       maxCapacity: 300
     });
 
-    changelogsTable.autoScaleWriteCapacity({
-      minCapacity: 5,
-      maxCapacity: 20
+    readScaling.scaleOnUtilization({
+      targetUtilizationPercent: 75
     });
 
     // A table to store the list of feeds
     const feedsTable = new dynamodb.Table(this, 'Feeds', {
-      partitionKey: { name: 'feed', type: dynamodb.AttributeType.String },
+      partitionKey: { name: 'feed', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PayPerRequest
     });
 
     // A table which stores the auto complete search index
     const searchIndexTable = new dynamodb.Table(this, 'search-index', {
-      partitionKey: { name: 'fragment', type: dynamodb.AttributeType.String },
-      sortKey: { name: 'score', type: dynamodb.AttributeType.String },
-      ttlAttributeName: 'validUntil',
+      partitionKey: { name: 'fragment', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'score', type: dynamodb.AttributeType.STRING },
+      timeToLiveAttribute: 'validUntil',
       billingMode: dynamodb.BillingMode.PayPerRequest
     });
 
@@ -178,9 +179,11 @@ class Recrawler extends cdk.Stack {
     props.toCrawlTopic.grantPublish(recrawlLambda.role);
 
     // Schedule the recrawler to run once every minute
-    this.eventRule = new events.EventRule(this, 'recrawl-check-schedule', {
-      scheduleExpression: 'rate(1 minute)',
-      targets: [recrawlLambda]
+    this.eventRule = new events.Rule(this, 'recrawl-check-schedule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(1)),
+      targets: [
+        new targets.LambdaFunction(recrawlLambda)
+      ]
     });
   }
 }
@@ -208,9 +211,7 @@ class NpmFollower extends cdk.Stack {
     const followerDefinition = new ecs.FargateTaskDefinition(this, 'NpmFollowerDefinition', {});
 
     followerDefinition.addContainer('npm-follower', {
-      image: ecs.ContainerImage.fromAsset(this, 'NpmFollowerImage', {
-        directory: './app/npm-follower'
-      }),
+      image: ecs.ContainerImage.fromAsset('./app/npm-follower'),
       memoryMiB: 512,
       cpu: 256,
       environment: {
@@ -263,9 +264,11 @@ class PyPIFollower extends cdk.Stack {
     props.toCrawlTopic.grantPublish(pypiFollower.role);
 
     // Schedule the follower to run once every minute
-    this.eventRule = new events.EventRule(this, 'check-recent-pypi', {
-      scheduleExpression: 'rate(5 minutes)',
-      targets: [pypiFollower]
+    this.eventRule = new events.Rule(this, 'check-recent-pypi', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      targets: [
+        new targets.LambdaFunction(pypiFollower)
+      ]
     });
   }
 }
@@ -293,9 +296,11 @@ class RubyGemFollower extends cdk.Stack {
     props.toCrawlTopic.grantPublish(rubygemFollower.role);
 
     // Schedule the follower to run once every minute
-    this.eventRule = new events.EventRule(this, 'check-recent-rubygems', {
-      scheduleExpression: 'rate(5 minutes)',
-      targets: [rubygemFollower]
+    this.eventRule = new events.Rule(this, 'check-recent-rubygems', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      targets: [
+        new targets.LambdaFunction(rubygemFollower)
+      ]
     });
   }
 }
@@ -304,14 +309,12 @@ class BroadcastSocket extends cdk.Stack {
   constructor(parent, id, props) {
     super(parent, id, props);
 
-    const broadcast = new ecs.LoadBalancedFargateService(this, 'Broadcast', {
-      image: ecs.ContainerImage.fromAsset(this, 'broadcast-image', {
-        directory: './app/socket-broadcast'
-      }),
+    const broadcast = new ecsPatterns.LoadBalancedFargateService(this, 'Broadcast', {
+      image: ecs.ContainerImage.fromAsset('./app/socket-broadcast'),
       publicTasks: true,
       cluster: props.cluster,
-      cpu: '256',
-      memoryMiB: '512',
+      cpu: 256,
+      memoryLimitMiB: 512,
       desiredCount: 1,
       environment: {
         REDIS_HOST: props.redis.cluster.cacheClusterRedisEndpointAddress,
@@ -323,7 +326,7 @@ class BroadcastSocket extends cdk.Stack {
     // Grant the broadcast service networking access to Redis
     broadcast.service.connections.allowToDefaultPort(props.redis);
 
-    this.dnsName = broadcast.loadBalancer.dnsName;
+    this.dnsName = broadcast.loadBalancer.loadBalancerDnsName;
   }
 }
 
@@ -349,9 +352,11 @@ class RecentlyCrawled extends cdk.Stack {
     props.apiBucket.grantReadWrite(recentlyCrawled.role);
 
     // Schedule the recrawler to run once every minute
-    this.eventRule = new events.EventRule(this, 'recrawl-check-schedule', {
-      scheduleExpression: 'rate(1 minute)',
-      targets: [recentlyCrawled]
+    this.eventRule = new events.Rule(this, 'recrawl-check-schedule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(1)),
+      targets: [
+        new targets.LambdaFunction(recentlyCrawled)
+      ]
     });
   }
 }
@@ -410,9 +415,11 @@ class WebFrontend extends cdk.Stack {
     props.webBucket.grantReadWrite(regenerateHomepage.role);
 
     // Schedule this lambda to run once a minute
-    this.eventRule = new events.EventRule(this, 'homepage-regeneration-schedule', {
-      scheduleExpression: 'rate(1 minute)',
-      targets: [regenerateHomepage]
+    this.eventRule = new events.Rule(this, 'homepage-regeneration-schedule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(1)),
+      targets: [
+        new targets.LambdaFunction(regenerateHomepage)
+      ]
     });
   }
 }
@@ -421,7 +428,7 @@ class GlobalDistribution extends cdk.Stack {
   constructor(parent, id, props) {
     super(parent, id, props);
 
-    this.dist = new cloudfront.CloudFrontWebDistribution(this, 'MyDistribution', {
+    this.dist = new cloudfront.CloudFrontWebDistribution(this, 'ChangelogsDistribution', {
       aliasConfiguration: domain,
       originConfigs: [
         // All the static files, like CSS, JS, images, etc
