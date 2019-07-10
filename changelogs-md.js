@@ -218,7 +218,7 @@ class NpmFollower extends cdk.Stack {
         CHANGELOGS_TABLE_NAME: props.changelogsTable.tableName,
         DISCOVERED_TOPIC_NAME: props.toCrawlTopic.topicArn
       },
-      logging: new ecs.AwsLogDriver(this, 'npm-follower', {
+      logging: new ecs.AwsLogDriver({
         streamPrefix: 'npm-follower'
       })
     });
@@ -509,11 +509,13 @@ class GlobalDistribution extends cdk.Stack {
 
 const app = new cdk.App();
 
+var envName = process.env.ENV_NAME || 'prod';
+
 // The stack that holds the shared underlying resources.
-const sharedResources = new SharedResources(app, 'shared-resources');
+const sharedResources = new SharedResources(app, `${envName}-shared-resources`);
 
 // The micro components that make up the application
-this.crawler = new Crawler(app, 'crawler', {
+this.crawler = new Crawler(app, `${envName}-crawler`, {
   vpc: sharedResources.vpc,
   redis: sharedResources.redis,
   changelogsTable: sharedResources.changelogsTable,
@@ -524,42 +526,42 @@ this.crawler = new Crawler(app, 'crawler', {
   toCrawlTopic: sharedResources.toCrawlTopic
 });
 
-this.recrawler = new Recrawler(app, 'recrawler', {
+this.recrawler = new Recrawler(app, `${envName}-recrawler`, {
   changelogsTable: sharedResources.changelogsTable,
   toCrawlTopic: sharedResources.toCrawlTopic
 });
 
-this.recentlyCrawled = new RecentlyCrawled(app, 'recently-crawled', {
+this.recentlyCrawled = new RecentlyCrawled(app, `${envName}-recently-crawled`, {
   feedsTable: sharedResources.feedsTable,
   apiBucket: sharedResources.apiBucket
 });
 
-this.npmFollower = new NpmFollower(app, 'npm-follower', {
+this.npmFollower = new NpmFollower(app, `${envName}-npm-follower`, {
   changelogsTable: sharedResources.changelogsTable,
   toCrawlTopic: sharedResources.toCrawlTopic,
   cluster: sharedResources.cluster,
 });
 
-this.pypiFollower = new PyPIFollower(app, 'pypi-follower', {
+this.pypiFollower = new PyPIFollower(app, `${envName}-pypi-follower`, {
   changelogsTable: sharedResources.changelogsTable,
   toCrawlTopic: sharedResources.toCrawlTopic
 });
 
-this.rubygemFollower = new RubyGemFollower(app, 'rubygem-follower', {
+this.rubygemFollower = new RubyGemFollower(app, `${envName}-rubygem-follower`, {
   changelogsTable: sharedResources.changelogsTable,
   toCrawlTopic: sharedResources.toCrawlTopic
 });
 
-const broadcast = new BroadcastSocket(app, 'broadcast', {
+const broadcast = new BroadcastSocket(app, `${envName}-broadcast`, {
   redis: sharedResources.redis,
   cluster: sharedResources.cluster
 });
 
-const autocompleter = new Autocompleter(app, 'autocomplete', {
+const autocompleter = new Autocompleter(app, `${envName}-autocomplete`, {
   searchIndexTable: sharedResources.searchIndexTable
 });
 
-this.webFrontend = new WebFrontend(app, 'web-frontend', {
+this.webFrontend = new WebFrontend(app, `${envName}-web-frontend`, {
   changelogsTable: sharedResources.changelogsTable,
   feedsTable: sharedResources.feedsTable,
   webBucket: sharedResources.webBucket,
@@ -567,7 +569,7 @@ this.webFrontend = new WebFrontend(app, 'web-frontend', {
 });
 
 // A Cloudfront distribution that serves the website
-this.dist = new GlobalDistribution(app, 'cloudfront-distribution', {
+this.dist = new GlobalDistribution(app, `${envName}-cloudfront-distribution`, {
   webBucket: sharedResources.webBucket,
   apiBucket: sharedResources.apiBucket,
   staticBucket: sharedResources.staticBucket,
