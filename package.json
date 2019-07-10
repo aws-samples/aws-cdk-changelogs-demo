@@ -26,7 +26,8 @@
   "scripts": {
     "setup": "npm install; cd app; npm install",
     "deploy": "cdk deploy '*'",
-    "synth": "cdk synth --output synth"
+    "synth": "cdk synth --output synth",
+    "destroy": "cdk destroy"
   },
   "dependencies": {
     "npm": "6.10.0"

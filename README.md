@@ -90,6 +90,14 @@ of the repo:
 }
 ```
 
+### Cleanup
+
+To destroy any resources you have created for this example:
+
+```bash
+npm run-script destroy
+```
+
 ## License Summary
 
  This sample code is made available under a modified MIT license.
