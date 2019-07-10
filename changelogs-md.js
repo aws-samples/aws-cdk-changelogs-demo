@@ -132,8 +132,8 @@ class Crawler extends cdk.Stack {
         SEARCH_INDEX_TABLE_NAME: props.searchIndexTable.tableName,
         API_BUCKET_NAME: props.apiBucket.bucketName,
         WEB_BUCKET_NAME: props.webBucket.bucketName,
-        REDIS_HOST: props.redis.cluster.cacheClusterRedisEndpointAddress,
-        REDIS_PORT: props.redis.cluster.cacheClusterRedisEndpointPort
+        REDIS_HOST: props.redis.cluster.attrRedisEndpointAddress,
+        REDIS_PORT: props.redis.cluster.attrRedisEndpointPort
       }
     });
 
@@ -317,8 +317,8 @@ class BroadcastSocket extends cdk.Stack {
       memoryLimitMiB: 512,
       desiredCount: 1,
       environment: {
-        REDIS_HOST: props.redis.cluster.cacheClusterRedisEndpointAddress,
-        REDIS_PORT: props.redis.cluster.cacheClusterRedisEndpointPort
+        REDIS_HOST: props.redis.cluster.attrRedisEndpointAddress,
+        REDIS_PORT: props.redis.cluster.attrRedisEndpointPort
       },
       createLogs: true
     });
