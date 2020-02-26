@@ -7,7 +7,7 @@
     "cheerio": "0.20.0",
     "find-versions": "3.0.0",
     "highlight.js": "9.6.0",
-    "lodash": "4.17.11",
+    "lodash": "4.17.13",
     "marked": "^0.7.0",
     "octonode": "0.9.5",
     "request-promise-native": "1.0.7",
