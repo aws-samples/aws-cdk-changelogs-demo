@@ -9,8 +9,7 @@ class RedisCluster extends cdk.Construct {
     const targetVpc = props.vpc;
 
     // Define a group for telling Elasticache which subnets to put cache nodes in.
-    this.subnetGroup = new elasticache.CfnSubnetGroup(this, `${id}-subnet-group`, {
-      cacheSubnetGroupName: `${id}-subnet-group`,
+    const subnetGroup = new elasticache.CfnSubnetGroup(this, `${id}-subnet-group`, {
       description: `List of subnets used for redis cache ${id}`,
       subnetIds: targetVpc.privateSubnets.map(function(subnet) {
         return subnet.subnetId;
@@ -22,7 +21,11 @@ class RedisCluster extends cdk.Construct {
 
     this.connections = new ec2.Connections({
       securityGroups: [this.securityGroup],
-      defaultPort: ec2.Port.tcp(6379)
+      defaultPort: new ec2.Port({
+        protocol: ec2.Protocol.TCP,
+        fromPort: 6379,
+        toPort: 6379
+      })
     });
 
     // The cluster resource itself.
@@ -31,13 +34,11 @@ class RedisCluster extends cdk.Construct {
       engine: 'redis',
       numCacheNodes: 1,
       autoMinorVersionUpgrade: true,
-      cacheSubnetGroupName: this.subnetGroup.cacheSubnetGroupName,
+      cacheSubnetGroupName: subnetGroup.ref,
       vpcSecurityGroupIds: [
         this.securityGroup.securityGroupId
       ]
     });
-
-    this.cluster.addDependsOn(this.subnetGroup);
   }
 }
 

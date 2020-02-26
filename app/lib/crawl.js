@@ -1,11 +1,11 @@
-const github = require('octonode');
+const { Octokit } = require("@octokit/rest")
+const { createTokenAuth } = require("@octokit/auth-token");
 const _ = require('lodash');
 const request = require('request-promise-native');
 
 function Crawl() {
-  this.githubClient = github.client({
-    id: process.env.GITHUB_CLIENT_ID || 'no github client id set',
-    secret: process.env.GITHUB_SECRET || 'no github secret set'
+  this.githubClient = Octokit({
+    auth: process.env.GITHUB_AUTH_TOKEN || 'github access token not set'
   });
 
   this.request = request.defaults({
@@ -30,7 +30,14 @@ Crawl.prototype.fetchChangelogUsingCachedUrl = async function(repoName) {
   }
 
   console.log(`Download cached changelog URL ${metadata.sourceUrl}`);
-  let response = await this.request(metadata.sourceUrl);
+  var response;
+  try {
+    response = await this.request(metadata.sourceUrl);
+  } catch (e) {
+    console.error(`Unable to download cached changelog URL: ${metadata.sourceUrl}`);
+    console.error(e);
+    return;
+  }
 
   if (response.statusCode !== 200) {
     return;
@@ -50,24 +57,34 @@ Crawl.prototype.fetchChangelogUsingCachedUrl = async function(repoName) {
   * name format
 **/
 Crawl.prototype.locateChangelogInRepo = async function(repoName) {
-  var repo = this.githubClient.repo(repoName);
+  var tokens = repoName.split('/');
+  const owner = tokens[0];
+  const repo = tokens[1];
 
   // Ask github API for the contents of the root of the repo
   var contents;
+
   try {
-    contents = await repo.contentsAsync('');
-    // Octonode returns an array with the first element of the array
-    // being the response, and the second element being the headers (facepalm)
-    contents = contents.shift();
+    contents = await this.githubClient.repos.getContents({
+      owner: owner,
+      repo: repo,
+      path: ''
+    });
   } catch (e) {
-    if (e.statusCode === 404) {
-      // The repo must be private or deleted, unable to get contents for it
-      return;
-    } else {
-      console.error(e);
-      return;
-    }
+    console.error(`Failed to find repo contents ${owner}/${repo}`);
+    console.error(e);
+    return;
   }
+
+  if (contents.status === 404) {
+    // Repo doesn't exist or can't get contents for it.
+    return;
+  } else if (contents.status !== 200) {
+    console.error(contents);
+    return;
+  }
+
+  contents = contents.data;
 
   var file;
   for (var i in contents) {
@@ -120,7 +137,14 @@ Crawl.prototype.repoContents = async function(repoName) {
   }
 
   console.log(`Download discovered changelog ${url}`);
-  let resp = await this.request(url);
+  var resp;
+  try {
+    resp = await this.request(url);
+  } catch (e) {
+    console.error(`Unable to download changelog: ${url}`);
+    console.error(e);
+    return;
+  }
 
   if (resp.statusCode !== 200) {
     console.error(`Unable to download changelog: ${url} \n Got status code: ${resp.statusCode}`);
