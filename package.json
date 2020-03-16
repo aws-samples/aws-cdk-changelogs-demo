@@ -12,7 +12,7 @@
     "@aws-cdk/aws-events": "^1.23.0",
     "@aws-cdk/aws-events-targets": "^1.23.0",
     "@aws-cdk/aws-lambda": "^1.23.0",
-    "@aws-cdk/aws-lambda-event-sources": "^01.23.0",
+    "@aws-cdk/aws-lambda-event-sources": "^1.23.0",
     "@aws-cdk/aws-s3": "^1.23.0",
     "@aws-cdk/aws-s3-deployment": "^1.23.0",
     "@aws-cdk/aws-sns": "^1.23.0",
@@ -20,15 +20,12 @@
     "cdk": "^1.23.0",
     "chai": "3.5.0",
     "copy-dir": "0.4.0",
-    "lodash": "4.17.11",
+    "lodash": "4.17.15",
     "mocha": "^6.1.4"
   },
   "scripts": {
     "setup": "npm install; cd app; npm install",
     "diff": "cdk diff",
     "deploy": "cdk deploy '*'"
-  },
-  "dependencies": {
-    "npm": "^6.10.0"
   }
 }
