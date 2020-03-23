@@ -20,8 +20,7 @@
     "cdk": "^1.23.0",
     "chai": "3.5.0",
     "copy-dir": "0.4.0",
-    "lodash": "4.17.15",
-    "mocha": "^6.1.4"
+    "lodash": "4.17.15"
   },
   "scripts": {
     "setup": "npm install; cd app; npm install",
