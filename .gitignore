@@ -13,3 +13,4 @@ cdk.context.json
 # These files are dynamically copied in at build time
 app/npm-follower/lib
 app/npm-follower/package.json
+/node_modules/*
