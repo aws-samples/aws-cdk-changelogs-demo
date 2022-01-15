@@ -10,7 +10,7 @@
     "find-versions": "3.0.0",
     "highlight.js": "10.4.1",
     "lodash": "4.17.21",
-    "marked": "0.8.2",
+    "marked": "4.0.10",
     "request": "^2.88.2",
     "request-promise-native": "1.0.7",
     "semver-parser": "3.0.0",
