@@ -14,3 +14,4 @@ cdk.context.json
 app/npm-follower/lib
 app/npm-follower/package.json
 /node_modules/*
+node_modules

@@ -1,17 +1,21 @@
-import { App, Stack } from 'aws-cdk-lib';
+import { App, Stack, Duration } from 'aws-cdk-lib';
 import { aws_ec2 as ec2 } from 'aws-cdk-lib';
+import { aws_s3 as s3 } from 'aws-cdk-lib';
 import { aws_ecs as ecs } from 'aws-cdk-lib';
 import { aws_secretsmanager as secretsmanager } from 'aws-cdk-lib';
 import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
-import { aws_sns as sns } from 'aws-cdk-lib';
+import { aws_logs as logs } from 'aws-cdk-lib';
+import { aws_elasticloadbalancingv2 as elbv2 } from 'aws-cdk-lib';
 
 export interface CoreProps {
   vpc: ec2.Vpc,
   cluster: ecs.Cluster,
   githubAuthToken: secretsmanager.Secret,
   changelogsTable: dynamodb.Table;
+  searchIndexTable: dynamodb.Table;
   feedsTable: dynamodb.Table;
-  toCrawlTopic: sns.Topic;
+  apiBucket: s3.Bucket,
+  webBucket: s3.Bucket
 }
 
 // The core ECS service that orchestrates operations
@@ -27,21 +31,56 @@ export class Core extends Stack {
       memoryLimitMiB: 2048,
     });
 
-    this.taskDefinition.addContainer("core", {
+    var container = this.taskDefinition.addContainer("core", {
       image: ecs.ContainerImage.fromAsset("./app/core"),
       environment: {
         CHANGELOGS_TABLE_NAME: props.changelogsTable.tableName,
         FEEDS_TABLE_NAME: props.feedsTable.tableName,
-        DISCOVERED_TOPIC_ARN: props.toCrawlTopic.topicArn
+        SEARCH_INDEX_TABLE_NAME: props.searchIndexTable.tableName,
+        API_BUCKET_NAME: props.apiBucket.bucketName,
+        WEB_BUCKET_NAME: props.webBucket.bucketName,
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
       },
       secrets: {
         GITHUB_AUTH_TOKEN: ecs.Secret.fromSecretsManager(props.githubAuthToken)
-      }
+      },
+      logging: ecs.LogDriver.awsLogs({
+        streamPrefix: 'changelogs-core',
+        logRetention: logs.RetentionDays.ONE_DAY
+      })
+    });
+
+    container.addPortMappings({
+      hostPort: 80,
+      containerPort: 80
     });
 
     this.service = new ecs.FargateService(this, 'core-service', {
       taskDefinition: this.taskDefinition,
       cluster: props.cluster,
+      assignPublicIp: true,
+      desiredCount: 1
+    });
+
+    props.changelogsTable.grantReadWriteData(this.taskDefinition.taskRole);
+    props.feedsTable.grantReadWriteData(this.taskDefinition.taskRole);
+    props.searchIndexTable.grantReadWriteData(this.taskDefinition.taskRole);
+
+    props.apiBucket.grantReadWrite(this.taskDefinition.taskRole);
+    props.webBucket.grantReadWrite(this.taskDefinition.taskRole);
+    props.apiBucket.grantPutAcl(this.taskDefinition.taskRole);
+    props.webBucket.grantPutAcl(this.taskDefinition.taskRole);
+
+    const lb = new elbv2.ApplicationLoadBalancer(this, 'ALB', {
+      vpc: props.vpc,
+      internetFacing: true
+    });
+
+    const listener = lb.addListener('Listener', { port: 80, open: true });
+    listener.addTargets('core', {
+      deregistrationDelay: Duration.seconds(10),
+      port: 80,
+      targets: [this.service],
     });
   }
 }

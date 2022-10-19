@@ -3,7 +3,6 @@ import { aws_ec2 as ec2 } from 'aws-cdk-lib';
 import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
 import { aws_s3 as s3 } from 'aws-cdk-lib';
 import { aws_ecs as ecs } from 'aws-cdk-lib';
-import { aws_sns as sns } from 'aws-cdk-lib';
 import { aws_secretsmanager as secretsmanager } from 'aws-cdk-lib';
 
 export class SharedResources extends Stack {
@@ -23,7 +22,6 @@ export class SharedResources extends Stack {
 
   public cluster: ecs.Cluster;
 
-  public toCrawlTopic: sns.Topic;
   public githubToken: secretsmanager.Secret;
 
   constructor(scope: App, id: string, props?: StackProps) {
@@ -49,7 +47,7 @@ export class SharedResources extends Stack {
       partitionKey: { name: 'second', type: dynamodb.AttributeType.NUMBER },
       sortKey: { name: 'changelog', type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL
-    });
+    })
 
     // A table to store the list of feeds
     this.feedsTable = new dynamodb.Table(this, 'Feeds', {
@@ -87,11 +85,6 @@ export class SharedResources extends Stack {
 
     // Create an ECS cluster
     this.cluster = new ecs.Cluster(this, 'Cluster', { vpc: this.vpc });
-
-    // An SNS topic to which we can publish to trigger the crawl of a changelog
-    this.toCrawlTopic = new sns.Topic(this, 'to-crawl', {
-      displayName: 'Changelog to crawl'
-    });
 
     // The GitHub auth token secret
     this.githubToken = new secretsmanager.Secret(this, 'github-token', {

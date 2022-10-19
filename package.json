@@ -12,6 +12,6 @@
   },
   "scripts": {
     "setup": "npm install; cd app; npm install",
-    "synth": "cdk synth --app='ts-node index.ts' || true",
+    "synth": "cdk synth --app='ts-node index.ts' || true"
   }
 }
