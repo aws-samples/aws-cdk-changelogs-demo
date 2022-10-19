@@ -6,7 +6,7 @@
     "async": "2.0.1",
     "aws-sdk": "2.1236.0",
     "changes-stream": "2.2.0",
-    "cheerio": "1.0.0-rc.3",
+    "cheerio": "1.0.0-rc.12",
     "express": "^4.18.2",
     "find-versions": "3.0.0",
     "highlight.js": "10.4.1",
