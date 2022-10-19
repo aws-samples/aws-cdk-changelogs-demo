@@ -8,7 +8,7 @@
     "changes-stream": "2.2.0",
     "cheerio": "1.0.0-rc.3",
     "express": "^4.18.2",
-    "find-versions": "3.0.0",
+    "find-versions": "5.1.0",
     "highlight.js": "10.4.1",
     "lodash": "4.17.21",
     "marked": "0.8.2",
