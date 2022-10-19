@@ -3,7 +3,7 @@
   "dependencies": {
     "@octokit/auth-token": "2.4.0",
     "@octokit/rest": "16.43.1",
-    "async": "2.0.1",
+    "async": "2.6.4",
     "aws-sdk": "2.1236.0",
     "changes-stream": "2.2.0",
     "cheerio": "1.0.0-rc.3",
