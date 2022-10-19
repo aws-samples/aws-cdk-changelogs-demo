@@ -5,7 +5,7 @@ var Broadcast = require('./lib/broadcast');
 
 // Github repo discovery mechanism. Watches NPM for updated packages, and
 // schedules discovered Github repos for crawling.
-exports.handle = async function(e) {
+exports.handle = async function (e) {
   if (!e.Records || !e.Records.length) {
     throw new Error('Malformed input, expected list of records');
   }
@@ -34,10 +34,8 @@ exports.handle = async function(e) {
   console.log('Rendering HTML and JSON');
 
   // Render the HTML pages and webpage
-  await [
-    Presentation.saveApiResponse(changelog, results),
-    Presentation.saveWebPage(changelog, results)
-  ];
+  await Presentation.saveApiResponse(changelog, results);
+  await Presentation.saveWebPage(changelog, results);
 
   console.log('Indexing keywords');
 
@@ -46,7 +44,7 @@ exports.handle = async function(e) {
 
   console.log('Broadcasting to websocket');
 
-  Broadcast.notify(changelog, results);
+  //Broadcast.notify(changelog, results);
 
   console.log('Done!');
 };

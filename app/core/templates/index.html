@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>changelogs.md · Search engine and JSON API for changelogs from open source</title>
+    <meta name="description" content="Search changelogs from open source projects, or use the REST API for a parsed JSON changelog format.">
+    <meta property="og:description" content="Search changelogs from open source projects, or use the REST API for a parsed JSON changelog format." />
+    <meta property="og:title" content="changelogs.md · Search engine and JSON API for changelogs from open source" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://changelogs.md" />
+    <meta property="og:image" content="https://changelogs.md/open-graph.png" />
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+
+
+    <!-- Bootstrap -->
+    <style>
+    @import url("//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic");
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-8 offset-md-2">
+          <section class="row" style='min-height: 0px; margin-bottom: 0px'>
+            <header class="col-md-8">
+              <a href='/' class='navbar-brand text-dark'>
+                <h2><img src='/favicon.ico' style='vertical-align: middle; height: 32px; padding-right: 10px;'/>changelogs.md</h2>
+              </a>
+            </header>
+            <div class="col-md-4" style='margin-top: 22px; border: none'>
+              <form class="form-inline" style='margin-right: 0px; padding-right: 0px'>
+                <i class="fas fa-search position-absolute d-none d-md-block" style="left: -10px;" aria-hidden="true"></i>
+                <input id="search" autocomplete="off" class="form-control form-control-sm w-100" type="text" placeholder="Search" aria-label="Search">
+              </form>
+            </div>
+          </section>
+          <hr style="color: #ccc; height: 4px;" />
+          <section id="results" class="row" style="display: none; min-height: 0px;">
+            <header class="col-md-3">
+              <h3 style='padding-bottom: 20px;'>Results</h3>
+            </header>
+            <div class="col-md-9">
+              <div class="list-group" id="resultsList">
+              </div>
+            </div>
+          </section>
+          <section class="row" style="min-height: 0px">
+            <header class="col-md-3">
+              <h3 style='padding-bottom: 20px;'>Recently Crawled</h3>
+            </header>
+            <div class="col-md-9">
+              <div class="list-group" id='recentList'>
+                <% _.forEach(feed, function(feedItem) { %>
+                  <a href='/github/<%- feedItem.changelog %>/' class='list-group-item-action list-group-item d-flex justify-content-between align-items-center'>
+                    <%- feedItem.changelog %>
+                    <span class="badge badge-primary badge-pill"><%- feedItem.versionNumber %></span>
+                  </a>
+                <% }); %>
+              </div>
+            </div>
+          </section>
+          <section class="row">
+            <header class="col-md-3">
+              <h3 style='padding-bottom: 20px;'>About</h3>
+            </header>
+            <div class="col-md-9">
+              <p>
+                This is a search engine that crawls and parses <a href='http://keepachangelog.com/en/1.0.0/'>changelogs</a> from open source projects on Github.
+              </p>
+              <p>
+                Created by <a href='https://github.com/nathanpeck'>Nathan Peck</a>. Interested in <a href='https://github.com/aws-samples/aws-cdk-changelogs-demo'>how it works</a>?
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var recentList = document.getElementById('recentList');
+    var search = document.getElementById('search');
+    var results = document.getElementById('results');
+
+    var socket = io('/');
+
+    // Greeting from the server
+    socket.on('welcome', function() {
+      console.log('Connected to socket.io');
+    });
+
+    // A new changelog just got crawled
+    socket.on('crawled_repo', function(data) {
+      var newResult = "<a href='/github/" + data.changelog + "' class='pullDown list-group-item-action list-group-item d-flex justify-content-between align-items-center'>" + data.changelog + '<span class="badge badge-primary badge-pill">' + data.version + '</span></a>';
+      recentList.firstElementChild.insertAdjacentHTML('beforebegin', newResult);
+
+      var length = recentList.children.length;
+      if (length > 20) {
+        for (var i = 20; i < length; i++) {
+          recentList.removeChild(recentList.children[i]);
+        }
+      }
+    });
+
+
+    var httpRequest = null;
+
+    RegExp.escape = function(s) {
+      return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
+
+    function makeRequest(url) {
+      if (httpRequest && httpRequest.abort()) {
+        // Cancel any inflight request as another keystroke has come in
+        httpRequest.abort();
+      }
+
+      httpRequest = new XMLHttpRequest();
+
+      if (!httpRequest) {
+        return false;
+      }
+      httpRequest.onreadystatechange = alertContents;
+      httpRequest.open('GET', url);
+      httpRequest.send();
+    }
+
+    function alertContents() {
+      if (httpRequest.readyState === XMLHttpRequest.DONE) {
+        if (httpRequest.status === 200) {
+          var response = JSON.parse(httpRequest.responseText);
+
+          if (response.length == 0) {
+            resultsList.innerHTML = "<b>Nothing found</b>";
+            if (results.style.display == 'none') {
+              results.style.display = 'flex';
+            }
+            return;
+          }
+
+          var innerHTML = '';
+          for (var i = 0; i < response.length; i++) {
+            var repo = response[i].completion;
+
+            var searchRegex = new RegExp(RegExp.escape(search.value), 'ig');
+            var resultsText = repo.replace(searchRegex, '<b>' + search.value.toLowerCase() + '</b>');
+
+            innerHTML += "<a href='/github/" + repo + "' class='list-group-item-action list-group-item'>" + resultsText + "</a>";
+          }
+
+          resultsList.innerHTML = innerHTML;
+
+          if (results.style.display == 'none') {
+            results.style.display = 'flex';
+          }
+        }
+      }
+    }
+
+    function getResults(e) {
+      if (search.value.length > 1) {
+        makeRequest('/search?q=' + encodeURIComponent(search.value));
+      } else {
+        results.style.display = 'none';
+      }
+    }
+
+    if (search.attachEvent) {
+      search.attachEvent("input", getResults);
+    } else {
+      search.addEventListener("input", getResults);
+    }
+   </script>
+</html>

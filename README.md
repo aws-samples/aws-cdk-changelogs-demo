@@ -70,15 +70,14 @@ For a less limited Github API access you need to configure an access token:
 
 ```json
 {
-  "clientId": "<your client id>",
-  "secret": "<your secret token>"
+  "token": "<your personal access token>"
 }
 ```
 
 ### Domain name and SSL
 
 You will need to supply you own domain name and SSL cert if you want to deploy
-the site. The configuration should be put in a file `domain.json` in the root
+the site. The configuration should be put in a file `settings.json` in the root
 of the repo:
 
 ```

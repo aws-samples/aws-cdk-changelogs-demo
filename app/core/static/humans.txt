@@ -1,0 +1,10 @@
+/* TEAM */
+Creator: Nathan Peck
+Site: https://github.com/nathanpeck
+Twitter: nathankpeck
+Location: New York City
+
+/* SITE */
+Created: August 2016
+Infrastructure: AWS Lambda, AWS DynamoDB, AWS SNS, AWS S3, AWS CloudFront
+Architecture: https://changelogs.md/img/architecture.png

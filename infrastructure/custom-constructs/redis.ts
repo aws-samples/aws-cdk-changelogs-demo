@@ -1,9 +1,20 @@
-const cdk = require('@aws-cdk/core');
-const elasticache = require('@aws-cdk/aws-elasticache');
-const ec2 = require('@aws-cdk/aws-ec2');
+import { Construct } from 'constructs';              // core constructs
+import { aws_elasticache as elasticache } from 'aws-cdk-lib';
+import { aws_ec2 as ec2 } from 'aws-cdk-lib';
 
-class RedisCluster extends cdk.Construct {
-  constructor(scope, id, props) {
+export interface RedisClusterProps {
+  vpc: ec2.Vpc;
+}
+
+// This is a custom construct that creates a Redis cache in a
+// VPC's public subnet. It also sets up a security group for
+// allowing or blocking access to the cluster.
+export class RedisCluster extends Construct {
+  public securityGroup: ec2.SecurityGroup;
+  public connections: ec2.Connections;
+  public cluster: elasticache.CfnCacheCluster;
+
+  constructor(scope: Construct, id: string, props: RedisClusterProps) {
     super(scope, id);
 
     const targetVpc = props.vpc;
@@ -11,7 +22,7 @@ class RedisCluster extends cdk.Construct {
     // Define a group for telling Elasticache which subnets to put cache nodes in.
     const subnetGroup = new elasticache.CfnSubnetGroup(this, `${id}-subnet-group`, {
       description: `List of subnets used for redis cache ${id}`,
-      subnetIds: targetVpc.privateSubnets.map(function(subnet) {
+      subnetIds: targetVpc.publicSubnets.map(function (subnet) {
         return subnet.subnetId;
       })
     });
@@ -21,11 +32,7 @@ class RedisCluster extends cdk.Construct {
 
     this.connections = new ec2.Connections({
       securityGroups: [this.securityGroup],
-      defaultPort: new ec2.Port({
-        protocol: ec2.Protocol.TCP,
-        fromPort: 6379,
-        toPort: 6379
-      })
+      defaultPort: ec2.Port.tcp(6379),
     });
 
     // The cluster resource itself.
@@ -41,7 +48,3 @@ class RedisCluster extends cdk.Construct {
     });
   }
 }
-
-module.exports = {
-  Cluster: RedisCluster
-};

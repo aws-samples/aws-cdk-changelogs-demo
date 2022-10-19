@@ -1,0 +1,10 @@
+{
+  "domain": {
+    "names": [
+      "beta.changelogs.md",
+      "changelogs.md",
+      "www.changelogs.md"
+    ],
+    "acmCertRef": "arn:aws:acm:us-east-1:449876148567:certificate/51d394f0-0366-4e64-95b4-4e8093224a1b"
+  }
+}

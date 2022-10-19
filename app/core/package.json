@@ -7,14 +7,16 @@
     "aws-sdk": "2.425.0",
     "changes-stream": "2.2.0",
     "cheerio": "1.0.0-rc.3",
+    "express": "^4.18.2",
     "find-versions": "3.0.0",
     "highlight.js": "10.4.1",
     "lodash": "4.17.21",
     "marked": "0.8.2",
+    "query-registry": "2.6.0",
     "request": "^2.88.2",
     "request-promise-native": "1.0.7",
     "semver-parser": "3.0.0",
-    "socket.io": "4.0.1",
+    "socket.io": "^4.0.1",
     "socket.io-emitter": "3.2.0"
   },
   "devDependencies": {
@@ -22,6 +24,7 @@
     "mocha": "7.1.1"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha test/*"
+    "test": "./node_modules/.bin/mocha test/*",
+    "start": "AWS_REGION=us-east-2 CHANGELOGS_TABLE_NAME=changelogs FEEDS_TABLE_NAME=feeds SEARCH_INDEX_TABLE_NAME=search-index GITHUB_AUTH_TOKEN=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 API_BUCKET_NAME=changelogs-md-resources-apibuckete65e1d51-ic5uennfpw6p WEB_BUCKET_NAME=changelogs-md-resources-webbucket77ac4f5e-3ld05b58rbfs node index.js"
   }
 }

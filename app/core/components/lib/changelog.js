@@ -5,13 +5,16 @@ var _ = require('lodash');
 
 var ONE_DAY = 86400000;
 var ONE_MINUTE = 3600000;
+var SECONDS_PER_DAY = 86400;
 
 function Changelog() {
   this.changelogName = process.env.CHANGELOGS_TABLE_NAME || 'no changelog table name set';
   this.feedsName = process.env.FEEDS_TABLE_NAME || 'no feed table name set';
-  this.discoveredTopicArn = process.env.DISCOVERED_TOPIC_NAME || 'no discovered changelog topic name set';
+  this.discoveredTopicArn = process.env.DISCOVERED_TOPIC_ARN || 'no discovered changelog topic arn set';
 }
 module.exports = new Changelog();
+
+var Orchestrator = require(process.cwd() + '/components/lib/orchestrator');
 
 /**
   * Check to see if we have crawled this changelog before in the past,
@@ -60,47 +63,42 @@ Changelog.prototype.bulkGetMetadata = async function (changelogs) {
 Changelog.prototype.upsertOne = async function (changelog) {
   var self = this;
 
-  console.log(`Adding ${changelog}`);
+  console.log(`REPO - ${changelog} noticed`);
 
-  var results = await DocumentClient.update({
-    TableName: self.changelogName,
-    Key: { changelog: changelog },
-    UpdateExpression: 'SET #d = :t',
-    ExpressionAttributeNames: {
-      '#d': 'discoveredAt'
-    },
-    ExpressionAttributeValues: {
-      ':t': Date.now()
-    },
-    ReturnValues: 'ALL_OLD'
-  }).promise();
+  // Select a second of the day on which to recrawl this repo
+  var second = Math.floor(Math.random() * SECONDS_PER_DAY);
 
-  var metadata = results.Attributes;
-
-  if (metadata && metadata.discoveredAt && metadata.discoveredAt > Date.now() - ONE_MINUTE) {
-    // Skip because we probably have a pending crawl already in progress
-    console.log(`Skipping ${changelog} because it was recently discovered`);
-    return;
-  } else if (metadata && metadata.crawledAt && metadata.crawledAt > Date.now() - ONE_DAY) {
-    // Skip because we successfully crawled it recently.
-    console.log(`Skipping ${changelog} because it was recently successfully crawled`);
-    return;
-  } else if (metadata && metadata.rejectedAt && metadata.rejectedAt > Date.now() - ONE_DAY) {
-    // Skip because we tried to crawl it recently but failed.
-    console.log(`Skipping ${changelog} because it was recently rejected`);
-    return;
-  } else {
-    console.log('Triggering a crawl of ' + changelog);
-
-    // Note that we do not await here, no need to wait on SNS before
-    // continuing to the next repo and changelog
-    SNS.publish({
-      Message: changelog,
-      TopicArn: self.discoveredTopicArn,
+  // Insert the metadata of the changelog into the table
+  // Conditional expression will reject changelogs that have already
+  // been saved into the table
+  try {
+    var results = await DocumentClient.update({
+      TableName: self.changelogName,
+      Key: { changelog: changelog },
+      UpdateExpression: 'SET #d = :t, #s = :s',
+      ExpressionAttributeNames: {
+        '#d': 'discoveredAt',
+        '#s': 'second'
+      },
+      ExpressionAttributeValues: {
+        ':t': Date.now(),
+        ':s': second
+      },
+      ConditionExpression: 'attribute_not_exists(#d)'
     }).promise();
-
-    return true;
+  } catch (e) {
+    if (e.code && e.code == 'ConditionalCheckFailedException') {
+      console.log(`REPO - ${changelog} was already known`);
+      return;
+    } else {
+      console.error(`REPO - ${changelog} failed upsert because of`, e);
+      return;
+    }
   }
+
+  // If we reached this point we can safely trigger an immediate
+  // crawl because this is a new changelog we just discovered.
+  await Orchestrator.crawlRepo(changelog);
 };
 
 /**
@@ -117,7 +115,7 @@ Changelog.prototype.upsert = async function (changelogs) {
     await this.upsertOne(changelog);
 
     await new Promise(function (resolve) {
-      setTimeout(resolve, 250);
+      setTimeout(resolve, 100);
     });
   }
 };
@@ -231,6 +229,10 @@ Changelog.prototype.crawled = async function (changelog, meta) {
     return feedItemToRemove.repo + ':' + feedItemToRemove.when;
   });
 
+  if (!keysToRemove.length) {
+    return;
+  }
+
   // And do a DB operation to remove the oldest items.
   await DocumentClient.update({
     TableName: self.feedsName,
@@ -250,24 +252,19 @@ Changelog.prototype._queryIndexForSecond = async function (second, key) {
   var results = await DocumentClient.query({
     TableName: this.changelogName,
     IndexName: 'second-changelog-index',
-    KeyConditionExpression: 'second = :s',
-    ExpressionAttributeValues: {
-      ':s': second
-    }
-  }).promise();
-  /*var results = await DocumentClient.scan({
-    ExclusiveStartKey: key,
-    TableName: this.changelogName,
+    KeyConditionExpression: '#s = :s',
     FilterExpression: 'crawledAt > :z AND crawledAt < :cutOff',
+    ExpressionAttributeNames: {
+      '#s': 'second'
+    },
     ExpressionAttributeValues: {
+      ':s': second,
       ':z': 0,
       ':cutOff': (Date.now() - ONE_DAY)
-    },
-    Select: 'SPECIFIC_ATTRIBUTES',
-    ProjectionExpression: 'changelog'
+    }
   }).promise();
 
-  var changelogs = results.Items.map(function(item) {
+  var changelogs = results.Items.map(function (item) {
     return item.changelog;
   });
 
@@ -275,23 +272,15 @@ Changelog.prototype._queryIndexForSecond = async function (second, key) {
     return changelogs;
   }
 
-  var moreChangelogs = await this._scanOutdatedFromKey(results.LastEvaluatedKey);
+  var moreChangelogs = await this._queryIndexForSecond(second, results.LastEvaluatedKey);
 
-  return changelogs.concat(moreChangelogs);*/
+  return changelogs.concat(moreChangelogs);
 };
-
-/**
-  * Scan through the collection for changelogs that need recrawling
-**/
-/*Changelog.prototype.scanForOutdatedChangelogs = async function() {
-  return await this._scanOutdatedFromKey(null);
-};*/
 
 /**
  * Uses index to locate changelogs that need to be crawled in this second and adjacent seconds
  */
-Changelog.prototype.selectChangelogsToCrawl = async function () {
-  var dt = new Date();
-  var second = dt.getSeconds() + (60 * dt.getMinutes()) + (60 * 60 * dt.getHours());
-  console.log(`second of day: ${second}`)
+Changelog.prototype.selectChangelogsToCrawl = async function (second) {
+  console.log(`RECRAWL - Checking second ${second}`);
+  return await this._queryIndexForSecond(second, null);
 }

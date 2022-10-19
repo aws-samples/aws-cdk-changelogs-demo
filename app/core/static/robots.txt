@@ -1,0 +1,5 @@
+Sitemap: https://changelogs.md/sitemap.txt
+
+User-agent: *
+Disallow: /api/
+Disallow: /search

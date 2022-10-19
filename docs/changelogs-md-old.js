@@ -1,3 +1,5 @@
+
+
 const cdk = require('@aws-cdk/core');
 const ecs = require('@aws-cdk/aws-ecs');
 const ecsPatterns = require('@aws-cdk/aws-ecs-patterns');
@@ -175,7 +177,7 @@ class NpmFollower extends cdk.Stack {
     // the build context since Docker can't reference files outside of the
     // build context.
     copydir.sync('./app/lib', './app/npm-follower/lib');
-    copydir.sync('./app', './app/npm-follower', function(stat, filepath, filename) {
+    copydir.sync('./app', './app/npm-follower', function (stat, filepath, filename) {
       if (stat === 'file' && filename === 'package.json') {
         return true;
       }

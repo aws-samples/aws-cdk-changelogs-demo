@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>changelogs.md · <%- repoName %> release history</title>
+    <meta name="description" content="Recent releases and changes to <%- repoName %>">
+    <meta name="keywords" content="releases, changelog, history">
+    <meta property="og:title" content="changelogs.md · <%- repoName %> release history" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://changelogs.md/github/<%- repoName %>/" />
+    <meta property="og:image" content="https://changelogs.md/open-graph.png" />
+    <meta property="og:description" content="Recent releases and changes to <%- repoName %>">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/css/style.css">
+    <!-- Bootstrap -->
+    <style>
+    @import url("//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,400italic");
+    </style>
+    <style>
+    section > div {
+      border-left: 1px solid #efefef;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-8 offset-md-2">
+          <section class="row" style='min-height: 0px; margin-bottom: 0px'>
+            <header class="col-md-8">
+              <a href='/' class='navbar-brand text-dark'>
+                <h2><img src='/favicon.ico' style='vertical-align: middle; height: 32px; padding-right: 10px;'/>changelogs.md</h2>
+              </a>
+            </header>
+          </section>
+          <hr style="color: #ccc; height: 4px;" />
+          <section class="row" style="min-height: 0px">
+            <header class="col-md-12">
+              <a href='/github/<%- repoName %>' style='text-decoration: none;'><h3 style='padding-bottom: 20px;'><%- repoName %></h3></a>
+              <p>
+                <a href='<%- repoUrl %>'>Repository</a> &nbsp;-&nbsp;
+                <a href='<%- apiUrl %>'>API</a> &nbsp;-&nbsp;
+                <a href='<%- changelogSource %>'>Source</a>
+              </p>
+            </header>
+          </section>
+          <% _.forEach(versions, function(version) { %>
+            <section class="row" style="min-height: 0px">
+              <header class="col-md-3">
+                <h4><%- version.version %></h4>
+                <%- version.date %>
+              </header>
+              <div class="col-md-9">
+                <%= version.body %>
+              </div>
+            </section>
+          <% }); %>
+        </div>
+      </div>
+    </div>
+  </body>
+  <link rel="stylesheet" type="text/css" href="/css/github.css">
+</html>

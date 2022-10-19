@@ -1,31 +1,17 @@
 {
   "description": "Setup for tests for various functions",
   "devDependencies": {
-    "@aws-cdk/aws-apigateway": "^1.23.0",
-    "@aws-cdk/aws-cloudfront": "^1.23.0",
-    "@aws-cdk/aws-dynamodb": "^1.23.0",
-    "@aws-cdk/aws-ec2": "^1.23.0",
-    "@aws-cdk/aws-ecs": "^1.23.0",
-    "@aws-cdk/aws-ecs-patterns": "^1.23.0",
-    "@aws-cdk/aws-elasticache": "^1.23.0",
-    "@aws-cdk/aws-elasticloadbalancingv2": "^1.23.0",
-    "@aws-cdk/aws-events": "^1.23.0",
-    "@aws-cdk/aws-events-targets": "^1.23.0",
-    "@aws-cdk/aws-lambda": "^1.23.0",
-    "@aws-cdk/aws-lambda-event-sources": "^1.23.0",
-    "@aws-cdk/aws-s3": "^1.23.0",
-    "@aws-cdk/aws-s3-deployment": "^1.23.0",
-    "@aws-cdk/aws-sns": "^1.23.0",
-    "@aws-cdk/core": "^1.23.0",
-    "cdk": "^1.102.0",
+    "aws-cdk-lib": "2.40.0",
     "chai": "3.5.0",
+    "constructs": "10.0.5",
     "copy-dir": "0.4.0",
     "lodash": "^4.17.21",
-    "mocha": "^7.1.1"
+    "mocha": "^7.1.1",
+    "ts-node": "9.0.0",
+    "typescript": "4.0.5"
   },
   "scripts": {
     "setup": "npm install; cd app; npm install",
-    "diff": "cdk diff",
-    "deploy": "cdk deploy '*'"
+    "synth": "cdk synth --app='ts-node index.ts' || true",
   }
 }
