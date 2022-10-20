@@ -25,6 +25,7 @@ export class SharedResources extends Stack {
 
   public githubToken: secretsmanager.Secret;
 
+  public loadBalancer: elbv2.ApplicationLoadBalancer;
   public listener: elbv2.ApplicationListener;
 
   constructor(scope: App, id: string, props?: StackProps) {
@@ -98,12 +99,12 @@ export class SharedResources extends Stack {
 
     // The load balancer that handles socket.io subscriptions
     // and search autocomplete HTTP requests
-    const lb = new elbv2.ApplicationLoadBalancer(this, 'ALB', {
+    this.loadBalancer = new elbv2.ApplicationLoadBalancer(this, 'ALB', {
       vpc: this.vpc,
       internetFacing: true
     });
 
-    this.listener = lb.addListener('Listener', { port: 80, open: true });
+    this.listener = this.loadBalancer.addListener('Listener', { port: 80, open: true });
 
     // Add a default "fail whale" style message
     this.listener.addAction('DefaultResponse', {

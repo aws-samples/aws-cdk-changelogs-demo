@@ -1,36 +1,38 @@
-import { App, Stack, StackProps, SecretValue } from 'aws-cdk-lib';
-import { aws_ec2 as ec2 } from 'aws-cdk-lib';
-import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
+import { App, Stack, StackProps } from 'aws-cdk-lib';
 import { aws_s3 as s3 } from 'aws-cdk-lib';
-import { aws_ecs as ecs } from 'aws-cdk-lib';
-import { aws_secretsmanager as secretsmanager } from 'aws-cdk-lib';
+import { aws_elasticloadbalancingv2 as elbv2 } from 'aws-cdk-lib';
+import { aws_cloudfront as cloudfront } from 'aws-cdk-lib';
+import { aws_certificatemanager as certificatemanager } from 'aws-cdk-lib';
+/*import * as fs from 'fs';
 
-interface GlobalDistributionProps {
+var settings = fs.readFileSync('settings.json');*/
+
+export interface GlobalDistributionProps extends StackProps {
   apiBucket: s3.Bucket,
   webBucket: s3.Bucket,
   staticBucket: s3.Bucket,
-
+  loadBalancer: elbv2.ApplicationLoadBalancer
 }
 
 export class GlobalDistribution extends Stack {
-  constructor(parent: App, id: string, props: CoreProps) {
+  constructor(parent: App, id: string, props: GlobalDistributionProps) {
     super(parent, id);
 
-  }
-}
+    var cert = cloudfront.ViewerCertificate.fromAcmCertificate(
+      certificatemanager.Certificate.fromCertificateArn(this, 'changelogs-cert', 'arn:aws:acm:us-east-1:449876148567:certificate/51d394f0-0366-4e64-95b4-4e8093224a1b'),
+      {
+        aliases: ['changelogs.md', 'www.changelogs.md']
+      }
+    );
 
-class GlobalDistribution extends cdk.Stack {
-  constructor(parent, id, props) {
-    super(parent, id, props);
-
-    this.dist = new cloudfront.CloudFrontWebDistribution(this, 'MyDistribution', {
-      aliasConfiguration: settings.domain,
+    new cloudfront.CloudFrontWebDistribution(this, 'changelogs-distribution', {
+      viewerCertificate: cert,
       originConfigs: [
         // All the static files, like CSS, JS, images, etc
         {
           customOriginSource: {
             domainName: props.staticBucket.bucketName + '.s3-website.' + this.region + '.amazonaws.com',
-            originProtocolPolicy: 'http-only'
+            originProtocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
           },
           behaviors: [
             {
@@ -43,7 +45,7 @@ class GlobalDistribution extends cdk.Stack {
         {
           customOriginSource: {
             domainName: props.webBucket.bucketName + '.s3-website.' + this.region + '.amazonaws.com',
-            originProtocolPolicy: 'http-only'
+            originProtocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
           },
           behaviors: [
             {
@@ -60,7 +62,7 @@ class GlobalDistribution extends cdk.Stack {
         {
           customOriginSource: {
             domainName: props.apiBucket.bucketName + '.s3-website.' + this.region + '.amazonaws.com',
-            originProtocolPolicy: 'http-only'
+            originProtocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
           },
           behaviors: [
             {
@@ -69,12 +71,12 @@ class GlobalDistribution extends cdk.Stack {
             }
           ]
         },
-        // The autocomplete endpoints behind API gateway
+        // The autocomplete endpoint
         {
           customOriginSource: {
-            domainName: props.autocompleteGateway.restApiId + '.execute-api.' + this.region + '.amazonaws.com',
+            domainName: props.loadBalancer.loadBalancerDnsName,
+            originProtocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
           },
-          originPath: '/prod',
           behaviors: [
             {
               pathPattern: 'search*',
@@ -87,12 +89,15 @@ class GlobalDistribution extends cdk.Stack {
         // the front facing website
         {
           customOriginSource: {
-            domainName: props.broadcast.dnsName,
-            originProtocolPolicy: 'http-only'
+            domainName: props.loadBalancer.loadBalancerDnsName,
+            originProtocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY
           },
           behaviors: [
             {
+              // Socket.io needs to make POST methods
+              allowedMethods: cloudfront.CloudFrontAllowedMethods.ALL,
               pathPattern: 'socket.io*',
+              // Socket.io uses query strings
               forwardedValues: { queryString: true, cookies: { forward: 'all' } }
             }
           ]
