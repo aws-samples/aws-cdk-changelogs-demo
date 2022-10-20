@@ -25,6 +25,6 @@
   },
   "scripts": {
     "test": "./node_modules/.bin/mocha test/*",
-    "start": "AWS_REGION=us-east-2 CHANGELOGS_TABLE_NAME=changelogs FEEDS_TABLE_NAME=feeds SEARCH_INDEX_TABLE_NAME=search-index GITHUB_AUTH_TOKEN=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 API_BUCKET_NAME=changelogs-md-resources-apibuckete65e1d51-ic5uennfpw6p WEB_BUCKET_NAME=changelogs-md-resources-webbucket77ac4f5e-3ld05b58rbfs node index.js"
+    "start": "AWS_REGION=us-east-2 CHANGELOGS_TABLE_NAME=changelogs FEEDS_TABLE_NAME=feeds SEARCH_INDEX_TABLE_NAME=search-index GITHUB_AUTH_TOKEN=fake API_BUCKET_NAME=changelogs-md-resources-apibuckete65e1d51-ic5uennfpw6p WEB_BUCKET_NAME=changelogs-md-resources-webbucket77ac4f5e-3ld05b58rbfs node index.js"
   }
 }

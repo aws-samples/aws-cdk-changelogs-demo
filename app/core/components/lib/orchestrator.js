@@ -1,12 +1,12 @@
-var Crawl = require(process.cwd() + '/components/lib/crawl');
-var Presentation = require(process.cwd() + '/components/lib/presentation');
-var Indexer = require(process.cwd() + '/components/lib/indexer');
-var Broadcast = require(process.cwd() + '/components/lib/broadcast');
-
 function Orchestrator() {
 
 }
 module.exports = new Orchestrator();
+
+var Crawl = require(process.cwd() + '/components/lib/crawl');
+var Presentation = require(process.cwd() + '/components/lib/presentation');
+var Indexer = require(process.cwd() + '/components/lib/indexer');
+var Broadcast = require(process.cwd() + '/components/lib/broadcast');
 
 /**
  * changelog: string

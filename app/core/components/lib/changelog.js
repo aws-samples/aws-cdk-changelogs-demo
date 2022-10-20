@@ -6,6 +6,7 @@ var _ = require('lodash');
 var ONE_DAY = 86400000;
 var ONE_MINUTE = 3600000;
 var SECONDS_PER_DAY = 86400;
+var ONE_WEEK = ONE_DAY * 7;
 
 function Changelog() {
   this.changelogName = process.env.CHANGELOGS_TABLE_NAME || 'no changelog table name set';
@@ -253,14 +254,17 @@ Changelog.prototype._queryIndexForSecond = async function (second, key) {
     TableName: this.changelogName,
     IndexName: 'second-changelog-index',
     KeyConditionExpression: '#s = :s',
-    FilterExpression: 'crawledAt > :z AND crawledAt < :cutOff',
+    // This filter expression ensures that known good changelogs
+    // get crawled at most once per day, and rejected repos that
+    // don't have known changelogs get rechecked at most once per week
+    FilterExpression: 'crawledAt < :cutOff AND rejectedAt < :rejectedCutoff',
     ExpressionAttributeNames: {
       '#s': 'second'
     },
     ExpressionAttributeValues: {
       ':s': second,
-      ':z': 0,
-      ':cutOff': (Date.now() - ONE_DAY)
+      ':cutOff': (Date.now() - ONE_DAY), // Don't recrawl things crawled within the last day
+      ':rejectedCutoff': (Date.now() - ONE_WEEK) // Don't recrawl things rejected within the last week
     }
   }).promise();
 

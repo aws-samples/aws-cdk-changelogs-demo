@@ -10,6 +10,9 @@ require('./components/rubygem-watcher');
 // Start the recrawl watcher
 require('./components/recrawl-watcher');
 
+// Start the homepage regenerator
+require('./components/regenerate-homepage');
+
 var app = require('express')();
 var server = require('http').Server(app);
 var cors = require('cors');

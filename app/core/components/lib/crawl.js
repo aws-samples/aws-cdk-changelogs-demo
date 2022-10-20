@@ -72,16 +72,13 @@ Crawl.prototype.locateChangelogInRepo = async function (repoName) {
       path: ''
     });
   } catch (e) {
-    console.error(`CRAWL - ${repoName} - Failed to find repo contents. Github: ${e.message}`);
-    return;
-  }
+    if (e.message == 'Not Found') {
+      // The repo itself was not found.
+      return;
+    }
 
-  if (contents.status === 404) {
-    // Repo doesn't exist or can't get contents for it.
-    return;
-  } else if (contents.status !== 200) {
-    console.error(contents);
-    return;
+    console.error(`CRAWL - ${repoName} - Failed to get repo contents. Github: ${e.message}`);
+    throw e;
   }
 
   contents = contents.data;
@@ -161,7 +158,13 @@ Crawl.prototype.repoContents = async function (repoName) {
   * Entrypoint that orchestrates the crawl
 **/
 Crawl.prototype.crawlRepo = async function (repoName) {
-  var repoContents = await this.repoContents(repoName);
+  try {
+    var repoContents = await this.repoContents(repoName);
+  } catch (e) {
+    console.error(`CRAWL - ${repoName} - Failed to crawl due to ephemeral error, will retry later`)
+    return;
+  }
+
 
   if (!repoContents) {
     console.log(`CRAWL - ${repoName} - Rejecting for not having a changelog`);
