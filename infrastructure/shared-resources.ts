@@ -4,6 +4,7 @@ import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
 import { aws_s3 as s3 } from 'aws-cdk-lib';
 import { aws_ecs as ecs } from 'aws-cdk-lib';
 import { aws_secretsmanager as secretsmanager } from 'aws-cdk-lib';
+import { aws_elasticloadbalancingv2 as elbv2 } from 'aws-cdk-lib';
 
 export class SharedResources extends Stack {
   // The shared network for all the resources that need to talk to each other
@@ -23,6 +24,8 @@ export class SharedResources extends Stack {
   public cluster: ecs.Cluster;
 
   public githubToken: secretsmanager.Secret;
+
+  public listener: elbv2.ApplicationListener;
 
   constructor(scope: App, id: string, props?: StackProps) {
     super(scope, id, props);
@@ -91,6 +94,23 @@ export class SharedResources extends Stack {
       secretObjectValue: {
         token: SecretValue.unsafePlainText('fake')
       },
+    });
+
+    // The load balancer that handles socket.io subscriptions
+    // and search autocomplete HTTP requests
+    const lb = new elbv2.ApplicationLoadBalancer(this, 'ALB', {
+      vpc: this.vpc,
+      internetFacing: true
+    });
+
+    this.listener = lb.addListener('Listener', { port: 80, open: true });
+
+    // Add a default "fail whale" style message
+    this.listener.addAction('DefaultResponse', {
+      action: elbv2.ListenerAction.fixedResponse(500, {
+        contentType: 'text/plain',
+        messageBody: 'Changelogs.md is down right now',
+      })
     });
   }
 }

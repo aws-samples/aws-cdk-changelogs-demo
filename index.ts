@@ -14,5 +14,6 @@ new Core(app, 'changelogs-md-core', {
   feedsTable: sharedResources.feedsTable,
   searchIndexTable: sharedResources.searchIndexTable,
   apiBucket: sharedResources.apiBucket,
-  webBucket: sharedResources.webBucket
+  webBucket: sharedResources.webBucket,
+  listener: sharedResources.listener
 });

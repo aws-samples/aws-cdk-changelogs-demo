@@ -15,7 +15,8 @@ export interface CoreProps {
   searchIndexTable: dynamodb.Table;
   feedsTable: dynamodb.Table;
   apiBucket: s3.Bucket,
-  webBucket: s3.Bucket
+  webBucket: s3.Bucket,
+  listener: elbv2.ApplicationListener
 }
 
 // The core ECS service that orchestrates operations
@@ -71,13 +72,12 @@ export class Core extends Stack {
     props.apiBucket.grantPutAcl(this.taskDefinition.taskRole);
     props.webBucket.grantPutAcl(this.taskDefinition.taskRole);
 
-    const lb = new elbv2.ApplicationLoadBalancer(this, 'ALB', {
-      vpc: props.vpc,
-      internetFacing: true
-    });
-
-    const listener = lb.addListener('Listener', { port: 80, open: true });
-    listener.addTargets('core', {
+    // Add the ECS service to the load balancer
+    props.listener.addTargets('core', {
+      priority: 1,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns(['*'])
+      ],
       deregistrationDelay: Duration.seconds(10),
       port: 80,
       targets: [this.service],
