@@ -122,25 +122,31 @@ Changelog.prototype.upsert = async function (changelogs) {
 };
 
 /**
-  * No changelog found, or else there was some issue that stopped
-  * us from crawling this changelog.
-**/
-Changelog.prototype.reject = async function (changelog) {
+ * Because of an issue with the changelog we have decided to reject it
+ * for a set duration. This duration may vary based on the type of issue
+ * for example repo doesn't exist, or repo has no changelog anyway,
+ * or repo has empty changelog, etc.
+ * @param {string} changelog
+ * @param {*} duration
+ */
+Changelog.prototype.rejectForDuration = async function (changelog, duration) {
   return await DocumentClient.update({
     TableName: this.changelogName,
     Key: { changelog: changelog },
-    UpdateExpression: 'SET #r = :t, #c = :z',
+    UpdateExpression: 'SET #r = :t, #c = :z, #ru = :tr',
     ExpressionAttributeNames: {
       '#r': 'rejectedAt',
-      '#c': 'crawledAt'
+      '#c': 'crawledAt',
+      '#ru': 'rejectedUntil'
     },
     ExpressionAttributeValues: {
       ':t': Date.now(),
-      ':z': 0
+      ':z': 0,
+      ':tr': Date.now() + duration
     },
     ReturnValues: 'NONE'
   }).promise();
-};
+}
 
 Changelog.prototype.recentlyUpdated = async function () {
   var response = await DocumentClient.get({
@@ -257,14 +263,15 @@ Changelog.prototype._queryIndexForSecond = async function (second, key) {
     // This filter expression ensures that known good changelogs
     // get crawled at most once per day, and rejected repos that
     // don't have known changelogs get rechecked at most once per week
-    FilterExpression: 'crawledAt < :cutOff AND rejectedAt < :rejectedCutoff',
+    FilterExpression: 'crawledAt < :cutOff AND rejectedAt < :rejectedCutoff AND (rejectedUntil < :now OR attribute_not_exists(rejectedUntil))',
     ExpressionAttributeNames: {
       '#s': 'second'
     },
     ExpressionAttributeValues: {
       ':s': second,
       ':cutOff': (Date.now() - ONE_DAY), // Don't recrawl things crawled within the last day
-      ':rejectedCutoff': (Date.now() - ONE_WEEK) // Don't recrawl things rejected within the last week
+      ':rejectedCutoff': (Date.now() - ONE_WEEK), // Force don't recrawl things rejected within the last week
+      ':now': Date.now()
     }
   }).promise();
 

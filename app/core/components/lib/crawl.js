@@ -3,6 +3,11 @@ const { createTokenAuth } = require("@octokit/auth-token");
 const _ = require('lodash');
 const request = require('request-promise-native');
 
+var ONE_DAY = 86400000;
+var ONE_MONTH = ONE_DAY * 30;
+var ONE_WEEK = ONE_DAY * 7;
+var SIX_MONTHS = ONE_MONTH * 6;
+
 function Crawl() {
   this.githubClient = Octokit({
     auth: process.env.GITHUB_AUTH_TOKEN || 'github access token not set'
@@ -35,8 +40,7 @@ Crawl.prototype.fetchChangelogUsingCachedUrl = async function (repoName) {
   try {
     response = await this.request(metadata.sourceUrl);
   } catch (e) {
-    console.error(`Unable to download cached changelog URL: ${metadata.sourceUrl}`);
-    console.error(e);
+    console.error(`Unable to download cached changelog URL: ${metadata.sourceUrl} - ${e.message}`);
     return;
   }
 
@@ -74,7 +78,7 @@ Crawl.prototype.locateChangelogInRepo = async function (repoName) {
   } catch (e) {
     if (e.message == 'Not Found') {
       // The repo itself was not found.
-      return;
+      throw Error('RepoNotFound');
     }
 
     console.error(`CRAWL - ${repoName} - Failed to get repo contents. Github: ${e.message}`);
@@ -130,6 +134,7 @@ Crawl.prototype.repoContents = async function (repoName) {
 
   if (!url) {
     console.log(`CRAWL - ${repoName} - No changelog found`);
+    throw Error('NoChangelogFound');
     return;
   }
 
@@ -161,14 +166,24 @@ Crawl.prototype.crawlRepo = async function (repoName) {
   try {
     var repoContents = await this.repoContents(repoName);
   } catch (e) {
-    console.error(`CRAWL - ${repoName} - Failed to crawl due to ephemeral error, will retry later`)
+    if (e.message == 'RepoNotFound') {
+      console.log(`CRAWL - ${repoName} - Rejecting because bad repo URL`);
+      await Changelog.rejectForDuration(repoName, SIX_MONTHS);
+      return
+    } else if (e.message == 'NoChangelogFound') {
+      console.log(`CRAWL - ${repoName} - Rejecting because no changelog found`);
+      await Changelog.rejectForDuration(repoName, ONE_WEEK);
+      return;
+    }
+
+    // No rejection for ephemeral errors
+    console.error(`CRAWL - ${repoName} - Failed to crawl due to ephemeral error ${e.message}, will retry later`)
     return;
   }
 
-
   if (!repoContents) {
-    console.log(`CRAWL - ${repoName} - Rejecting for not having a changelog`);
-    await Changelog.reject(repoName);
+    console.log(`CRAWL - ${repoName} - Rejecting because no repo contents`);
+    await Changelog.rejectForDuration(repoName, ONE_WEEK);
     return;
   }
 
@@ -176,8 +191,8 @@ Crawl.prototype.crawlRepo = async function (repoName) {
 
   // Check if the changelog is empty
   if (items.length === 0) {
-    console.log(`CRAWL - ${repoName} - Rejecting for empty changelog`);
-    await Changelog.reject(repoName);
+    console.log(`CRAWL - ${repoName} - Rejecting because changelog empty`);
+    await Changelog.rejectForDuration(repoName, ONE_WEEK);
     return;
   }
 
@@ -218,17 +233,7 @@ Crawl.prototype.recrawl = async function (second) {
 
   console.log(`RECRAWL - Found ${outdated.length} repos to recrawl`);
 
-  // Select a random sample of 3% or 10, whichever is greater
-  var numberToCrawl = outdated.length * .01;
-
-  if (numberToCrawl < 10) {
-    numberToCrawl = 10;
-  }
-
-  if (numberToCrawl > 100) {
-    numberToCrawl = 100;
-  }
-
+  var numberToCrawl = 5;
   var toRecrawl = _.sampleSize(outdated, numberToCrawl);
 
   console.log('RECRAWL - Recrawling', toRecrawl);
