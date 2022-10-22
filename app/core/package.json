@@ -3,25 +3,25 @@
   "dependencies": {
     "@octokit/auth-token": "2.4.0",
     "@octokit/rest": "16.43.1",
-    "async": "2.0.1",
+    "async": "^2.6.4",
     "aws-sdk": "2.1236.0",
     "changes-stream": "2.2.0",
-    "cheerio": "1.0.0-rc.3",
+    "cheerio": "^1.0.0-rc.12",
     "express": "^4.18.2",
-    "find-versions": "3.0.0",
+    "find-versions": "^5.1.0",
     "highlight.js": "10.4.1",
     "lodash": "4.17.21",
-    "marked": "0.8.2",
+    "marked": "^4.1.1",
     "query-registry": "2.6.0",
     "request": "^2.88.2",
     "request-promise-native": "1.0.7",
     "semver-parser": "3.0.0",
     "socket.io": "^4.5.3",
-    "socket.io-emitter": "3.2.0"
+    "socket.io-emitter": "^1.1.0"
   },
   "devDependencies": {
     "chai": "3.5.0",
-    "mocha": "7.1.1"
+    "mocha": "^10.1.0"
   },
   "scripts": {
     "test": "./node_modules/.bin/mocha test/*",

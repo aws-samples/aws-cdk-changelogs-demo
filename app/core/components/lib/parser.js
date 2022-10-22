@@ -1,5 +1,5 @@
 var _ = require('lodash');
-var findVersions = require('find-versions');
+var findVersions = import('find-versions').findVersions;
 var parser = require('semver-parser');
 var parseSemVer = parser.parseSemVer;
 var compareSemVer = parser.compareSemVer;
@@ -7,12 +7,12 @@ var compareSemVer = parser.compareSemVer;
 // Given the raw content of a changelogs.md file return a processed version of
 // the changelog that has been split up into versions, with versions and dates
 // nicely extracted.
-function Parser() {}
+function Parser() { }
 module.exports = new Parser();
 
 var falsePositives = /(may)|(before)|(to)|(from)|(on)/;
 var outsideReasonableTime = 1000 * 60 * 60 * 24 * 365 * 20;
-Parser.prototype.isFalsePositive = function(candidate, date) {
+Parser.prototype.isFalsePositive = function (candidate, date) {
   if (candidate.match(falsePositives)) {
     return true;
   }
@@ -38,7 +38,7 @@ var formats = [
   // European human format
   /\d{1,2}\s(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december),?\s\d{4}/gi
 ];
-Parser.prototype.dateSearch = function(string) {
+Parser.prototype.dateSearch = function (string) {
   var matches;
 
   for (var f in formats) {
@@ -70,7 +70,7 @@ Parser.prototype.dateSearch = function(string) {
   * @returns {null|object}
 **/
 var versionNumber = /\d+\.\d+(\.\d+)?/g;
-Parser.prototype.extractHeaderInfo = function(context) {
+Parser.prototype.extractHeaderInfo = function (context) {
   var self = this;
 
   // Preprocess the target a bit to remove extra whitespace
@@ -188,7 +188,7 @@ Parser.prototype.extractHeaderInfo = function(context) {
 
 // This function strips out top level HTML comments from the Markdown but leaves
 // HTML comments that are inside Markdown code blocks.
-Parser.prototype.removeHTMLComments = function(doc) {
+Parser.prototype.removeHTMLComments = function (doc) {
   var docLength = doc.length;
   var strippedContent = '';
   var commentDepth = 0;
@@ -236,7 +236,7 @@ Parser.prototype.removeHTMLComments = function(doc) {
   return strippedContent;
 };
 
-Parser.prototype.parse = function(lines) {
+Parser.prototype.parse = function (lines) {
   // Preprocess the document to remove top level HTML comments and their content
   lines = this.removeHTMLComments(lines.toString());
 
@@ -306,7 +306,7 @@ Parser.prototype.parse = function(lines) {
 
   // Finally sort the releases in descending order. Some changelogs
   // are in ascending order, and that is kind of annoying, prefer consistency.
-  cleanedItems.sort(function(a, b) {
+  cleanedItems.sort(function (a, b) {
     return compareSemVer(b.version, a.version);
   });
 
