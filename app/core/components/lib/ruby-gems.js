@@ -14,9 +14,9 @@ import * as Changelog from './changelog.js';
   * Fetch the list of recently released gems from RubyGems
 **/
 export const fetchRecentPackages = async function () {
-  var response = await got('https://rubygems.org/api/v1/activity/just_updated.json', httpOptions);
-
-  if (response.statusCode !== 200) {
+  try {
+    var response = await got('https://rubygems.org/api/v1/activity/just_updated.json', httpOptions);
+  } catch (e) {
     console.error('Failed to fetch https://rubygems.org/api/v1/activity/just_updated.json\n', response);
     return;
   }

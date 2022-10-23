@@ -148,11 +148,6 @@ export const fetchRepoContents = async function (repoName) {
     return;
   }
 
-  if (resp.statusCode !== 200) {
-    console.error(`CRAWL - ${repoName} - Unable to download changelog: ${url} \n Got status code: ${resp.statusCode}`);
-    return;
-  }
-
   return {
     url: url,
     body: resp.body

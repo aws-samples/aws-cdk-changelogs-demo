@@ -15,10 +15,10 @@ import * as Changelog from './changelog.js';
   * Fetch the list of recently released packages from PyPI
 **/
 export const fetchXMLFromPyPI = async function () {
-  var response = await got('https://pypi.org/rss/updates.xml', httpOptions);
-
-  if (response.statusCode !== 200) {
-    console.error('Failed to fetch https://pypi.org/rss/updates.xml\n', response);
+  try {
+    var response = await got('https://pypi.org/rss/updates.xml', httpOptions);
+  } catch (e) {
+    console.error('Failed to get https://pypi.org/rss/updates.xml', e);
     return;
   }
 
@@ -49,11 +49,15 @@ export const parsePackageNamesFromXML = function (xml) {
   * Fetch the details of a package from PyPI
 **/
 export const packageNameToRepo = async function (packageName) {
-  var response = await got(`https://pypi.org/pypi/${packageName}/json`, httpOptions);
-
-  if (response.statusCode !== 200) {
-    console.error(`PYPI - Failed to fetch https://pypi.org/pypi/${packageName}/json\n`, response);
-    return;
+  try {
+    var response = await got(`https://pypi.org/pypi/${packageName}/json`, httpOptions);
+  } catch (e) {
+    if (e.response.statusCode !== 200) {
+      console.error(`PYPI - Failed to fetch https://pypi.org/pypi/${packageName}/json\n`, response);
+      return;
+    } else {
+      console.error(`PYPI - Failed to fetch package https://pypi.org/pypi/${packageName}/json because of `, e);
+    }
   }
 
   var packageDetails;
