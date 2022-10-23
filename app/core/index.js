@@ -1,17 +1,17 @@
 // Start the NPM watcher
-//import './components/npm-watcher.js';
+import './components/npm-watcher.js';
 
 // Start the PyPI watcher
-//import './components/pypi-watcher.js';
+import './components/pypi-watcher.js';
 
 // Start the Ruby Gems watcher
-//import './components/rubygem-watcher.js';
+import './components/rubygem-watcher.js';
 
 // Start the recrawl watcher
 import './components/recrawl-watcher.js';
 
 // Start the homepage regenerator
-//import './components/regenerate-homepage.js';
+import './components/regenerate-homepage.js';
 
 import express from 'express';
 const app = express();
