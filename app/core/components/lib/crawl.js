@@ -1,34 +1,32 @@
-const { Octokit } = require("@octokit/rest")
-const { createTokenAuth } = require("@octokit/auth-token");
-const _ = require('lodash');
-const request = require('request-promise-native');
+import pkg from '@octokit/rest';
+const { Octokit } = pkg;
+import _ from 'lodash';
+import got from 'got';
 
 var ONE_DAY = 86400000;
 var ONE_MONTH = ONE_DAY * 30;
 var ONE_WEEK = ONE_DAY * 7;
 var SIX_MONTHS = ONE_MONTH * 6;
 
-function Crawl() {
-  this.githubClient = Octokit({
-    auth: process.env.GITHUB_AUTH_TOKEN || 'github access token not set'
-  });
+var githubClient = Octokit({
+  auth: process.env.GITHUB_AUTH_TOKEN || 'github access token not set'
+});
 
-  this.request = request.defaults({
-    headers: { 'User-Agent': 'changelogs.md' },
-    resolveWithFullResponse: true
-  });
-}
-module.exports = new Crawl();
+const httpOptions = {
+  headers: {
+    'User-Agent': 'changelogs.md'
+  }
+};
 
-const Changelog = require(process.cwd() + '/components/lib/changelog');
-const Orchestrator = require(process.cwd() + '/components/lib/orchestrator');
-const Parser = require(process.cwd() + '/components/lib/parser');
+import * as Changelog from './changelog.js';
+import * as Orchestrator from './orchestrator.js';
+import * as Parser from './parser.js';
 
 /**
   * If there is a cached URL of the changelog for this repo
   * fetch the changelog using that cached URL if possible
 **/
-Crawl.prototype.fetchChangelogUsingCachedUrl = async function (repoName) {
+export const fetchChangelogUsingCachedUrl = async function (repoName) {
   const metadata = await Changelog.getMetadata(repoName);
 
   if (!metadata || !metadata.sourceUrl) {
@@ -38,7 +36,7 @@ Crawl.prototype.fetchChangelogUsingCachedUrl = async function (repoName) {
   console.log(`Download cached changelog URL ${metadata.sourceUrl}`);
   var response;
   try {
-    response = await this.request(metadata.sourceUrl);
+    response = await got(metadata.sourceUrl, httpOptions);
   } catch (e) {
     console.error(`Unable to download cached changelog URL: ${metadata.sourceUrl} - ${e.message}`);
     return;
@@ -61,7 +59,7 @@ Crawl.prototype.fetchChangelogUsingCachedUrl = async function (repoName) {
   * This can be tricky because not everyone uses the same filenames and
   * name format
 **/
-Crawl.prototype.locateChangelogInRepo = async function (repoName) {
+export const locateChangelogInRepo = async function (repoName) {
   var tokens = repoName.split('/');
   const owner = tokens[0];
   const repo = tokens[1];
@@ -70,7 +68,7 @@ Crawl.prototype.locateChangelogInRepo = async function (repoName) {
   var contents;
 
   try {
-    contents = await this.githubClient.repos.getContents({
+    contents = await githubClient.repos.getContents({
       owner: owner,
       repo: repo,
       path: ''
@@ -79,6 +77,8 @@ Crawl.prototype.locateChangelogInRepo = async function (repoName) {
     if (e.message == 'Not Found') {
       // The repo itself was not found.
       throw Error('RepoNotFound');
+    } else if (e.message == 'This repository is empty.') {
+      throw Error('NoChangelogFound');
     }
 
     console.error(`CRAWL - ${repoName} - Failed to get repo contents. Github: ${e.message}`);
@@ -121,16 +121,16 @@ Crawl.prototype.locateChangelogInRepo = async function (repoName) {
 /**
   * Repo changelog contents
 **/
-Crawl.prototype.repoContents = async function (repoName) {
+export const fetchRepoContents = async function (repoName) {
   console.log(`REPO - ${repoName} - Checking for cached changelog details`);
-  var cachedResults = await this.fetchChangelogUsingCachedUrl(repoName);
+  var cachedResults = await fetchChangelogUsingCachedUrl(repoName);
 
   if (cachedResults) {
     return cachedResults;
   }
 
   console.log(`REPO - ${repoName} - Discovering changelog from scratch`);
-  const url = await this.locateChangelogInRepo(repoName);
+  const url = await locateChangelogInRepo(repoName);
 
   if (!url) {
     console.log(`CRAWL - ${repoName} - No changelog found`);
@@ -141,7 +141,7 @@ Crawl.prototype.repoContents = async function (repoName) {
   console.log(`CRAWL - ${repoName} - Download discovered changelog ${url}`);
   var resp;
   try {
-    resp = await this.request(url);
+    resp = await got(url, httpOptions);
   } catch (e) {
     console.error(`CRAWL - ${repoName} - Unable to download changelog: ${url}`);
     console.error(e);
@@ -162,9 +162,9 @@ Crawl.prototype.repoContents = async function (repoName) {
 /**
   * Entrypoint that orchestrates the crawl
 **/
-Crawl.prototype.crawlRepo = async function (repoName) {
+export const crawlRepo = async function (repoName) {
   try {
-    var repoContents = await this.repoContents(repoName);
+    var repoContents = await fetchRepoContents(repoName);
   } catch (e) {
     if (e.message == 'RepoNotFound') {
       console.log(`CRAWL - ${repoName} - Rejecting because bad repo URL`);
@@ -224,7 +224,7 @@ Crawl.prototype.crawlRepo = async function (repoName) {
 /**
   * Entrypoint that orchestrates a recrawl
 **/
-Crawl.prototype.recrawl = async function (second) {
+export const recrawl = async function (second) {
   var outdated = await Changelog.selectChangelogsToCrawl(second);
 
   if (outdated.length === 0) {

@@ -1,6 +1,6 @@
 // Handler that checks RubyGems recently updated packages once a minute
 // to identify Ruby repositories to crawl
-var Crawl = require(process.cwd() + '/components/lib/crawl');
+import * as Crawl from './lib/crawl.js';
 
 var CHECK_INTERVAL = 500;
 var lastSecond = 0;

@@ -1,35 +1,29 @@
-var AWS = require('aws-sdk');
-var DocumentClient = new AWS.DynamoDB.DocumentClient();
-var SNS = new AWS.SNS();
-var _ = require('lodash');
+import { GetCommand, QueryCommand, BatchGetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDB } from "./dynamodb-doc-client.js";
+import _ from 'lodash';
 
 var ONE_DAY = 86400000;
 var ONE_MINUTE = 3600000;
 var SECONDS_PER_DAY = 86400;
 var ONE_WEEK = ONE_DAY * 7;
 
-function Changelog() {
-  this.changelogName = process.env.CHANGELOGS_TABLE_NAME || 'no changelog table name set';
-  this.feedsName = process.env.FEEDS_TABLE_NAME || 'no feed table name set';
-  this.discoveredTopicArn = process.env.DISCOVERED_TOPIC_ARN || 'no discovered changelog topic arn set';
-}
-module.exports = new Changelog();
+const CHANGELOGS_TABLE_NAME = process.env.CHANGELOGS_TABLE_NAME || 'no changelog table name set';
+const FEEDS_TABLE_NAME = process.env.FEEDS_TABLE_NAME || 'no feed table name set';
+const DISCOVERED_TOPIC_ARN = process.env.DISCOVERED_TOPIC_ARN || 'no discovered changelog topic arn set';
 
-var Orchestrator = require(process.cwd() + '/components/lib/orchestrator');
+import * as Orchestrator from './orchestrator.js';
 
 /**
   * Check to see if we have crawled this changelog before in the past,
   * and if so we may have some metadata for it already.
 **/
-Changelog.prototype.getMetadata = async function (changelog) {
-  var self = this;
-
-  var result = await DocumentClient.get({
-    TableName: self.changelogName,
+export const getMetadata = async function (changelog) {
+  var result = await DynamoDB.send(new GetCommand({
+    TableName: CHANGELOGS_TABLE_NAME,
     Key: {
       changelog: changelog
     }
-  }).promise();
+  }));
 
   return result.Item;
 };
@@ -37,11 +31,11 @@ Changelog.prototype.getMetadata = async function (changelog) {
 /**
   * Bulk fetch metadata for a batch of repos.
 **/
-Changelog.prototype.bulkGetMetadata = async function (changelogs) {
+export const bulkGetMetadata = async function (changelogs) {
   var query = {};
 
   // Construct the bulk fetch query
-  query[this.changelogName] = {
+  query[CHANGELOGS_TABLE_NAME] = {
     Keys: changelogs.map(function (changelog) {
       return {
         changelog: changelog
@@ -49,9 +43,9 @@ Changelog.prototype.bulkGetMetadata = async function (changelogs) {
     })
   };
 
-  var results = await DocumentClient.batchGet({ RequestItems: query }).promise();
+  var results = await DynamoDB.send(new BatchGetCommand({ RequestItems: query }));
 
-  return results.Responses[this.changelogName];
+  return results.Responses[CHANGELOGS_TABLE_NAME];
 };
 
 /**
@@ -61,9 +55,7 @@ Changelog.prototype.bulkGetMetadata = async function (changelogs) {
   * @param {[string]} changelog - Name of the changelog
   * @param {function} done - Callback
 **/
-Changelog.prototype.upsertOne = async function (changelog) {
-  var self = this;
-
+export const upsertOne = async function (changelog) {
   console.log(`REPO - ${changelog} noticed`);
 
   // Select a second of the day on which to recrawl this repo
@@ -73,8 +65,8 @@ Changelog.prototype.upsertOne = async function (changelog) {
   // Conditional expression will reject changelogs that have already
   // been saved into the table
   try {
-    var results = await DocumentClient.update({
-      TableName: self.changelogName,
+    await DynamoDB.send(new UpdateCommand({
+      TableName: CHANGELOGS_TABLE_NAME,
       Key: { changelog: changelog },
       UpdateExpression: 'SET #d = :t, #s = :s',
       ExpressionAttributeNames: {
@@ -86,9 +78,9 @@ Changelog.prototype.upsertOne = async function (changelog) {
         ':s': second
       },
       ConditionExpression: 'attribute_not_exists(#d)'
-    }).promise();
+    }));
   } catch (e) {
-    if (e.code && e.code == 'ConditionalCheckFailedException') {
+    if (e.name && e.name == 'ConditionalCheckFailedException') {
       console.log(`REPO - ${changelog} was already known`);
       return;
     } else {
@@ -105,7 +97,7 @@ Changelog.prototype.upsertOne = async function (changelog) {
 /**
   * Upsert one or more discovered changelogs.
 **/
-Changelog.prototype.upsert = async function (changelogs) {
+export const upsert = async function (changelogs) {
   changelogs = [].concat(changelogs);
 
   changelogs.map(function (changelog) {
@@ -113,7 +105,7 @@ Changelog.prototype.upsert = async function (changelogs) {
   });
 
   for (var changelog of changelogs) {
-    await this.upsertOne(changelog);
+    await upsertOne(changelog);
 
     await new Promise(function (resolve) {
       setTimeout(resolve, 100);
@@ -129,9 +121,9 @@ Changelog.prototype.upsert = async function (changelogs) {
  * @param {string} changelog
  * @param {*} duration
  */
-Changelog.prototype.rejectForDuration = async function (changelog, duration) {
-  return await DocumentClient.update({
-    TableName: this.changelogName,
+export const rejectForDuration = async function (changelog, duration) {
+  return await DynamoDB.send(new UpdateCommand({
+    TableName: CHANGELOGS_TABLE_NAME,
     Key: { changelog: changelog },
     UpdateExpression: 'SET #r = :t, #c = :z, #ru = :tr',
     ExpressionAttributeNames: {
@@ -145,25 +137,26 @@ Changelog.prototype.rejectForDuration = async function (changelog, duration) {
       ':tr': Date.now() + duration
     },
     ReturnValues: 'NONE'
-  }).promise();
+  }));
 }
 
-Changelog.prototype.recentlyUpdated = async function () {
-  var response = await DocumentClient.get({
-    TableName: this.feedsName,
+export const recentlyUpdated = async function () {
+  var response = await DynamoDB.send(new GetCommand({
+    TableName: FEEDS_TABLE_NAME,
     Key: { feed: 'recently_updated' }
-  }).promise();
+  }));
 
   if (!response || !response.Item || !response.Item.items) {
     return [];
   }
 
-  var feedItems = response.Item.items.values.map(function (feedItem) {
+  var feedItems = [];
+  response.Item.items.forEach(function (feedItem) {
     feedItem = feedItem.split(':');
-    return {
+    feedItems.push({
       repo: feedItem[0],
       when: parseInt(feedItem[1], 10)
-    };
+    });
   });
 
   feedItems = _.sortBy(feedItems, 'when');
@@ -174,14 +167,13 @@ Changelog.prototype.recentlyUpdated = async function () {
 /**
   * Mark a changelog as having been crawled.
 **/
-Changelog.prototype.crawled = async function (changelog, meta) {
+export const crawled = async function (changelog, meta) {
   changelog.trim().toLowerCase();
-  var self = this;
 
   const [changelogMetadata, feedData] = await Promise.all([
     // Update the changelog metadata in its table
-    DocumentClient.update({
-      TableName: self.changelogName,
+    DynamoDB.send(new UpdateCommand({
+      TableName: CHANGELOGS_TABLE_NAME,
       Key: { changelog: changelog },
       UpdateExpression: 'SET #r = :z, #c = :t, #u = :u, #v = :v, #d = :d',
       ExpressionAttributeNames: {
@@ -199,29 +191,30 @@ Changelog.prototype.crawled = async function (changelog, meta) {
         ':d': meta.date
       },
       ReturnValues: 'ALL_NEW'
-    }).promise(),
+    })),
 
     // Add the changelog to the feed of recently crawled changelogs
-    DocumentClient.update({
-      TableName: self.feedsName,
+    DynamoDB.send(new UpdateCommand({
+      TableName: FEEDS_TABLE_NAME,
       Key: { feed: 'recently_updated' },
       UpdateExpression: 'ADD #i :r',
       ExpressionAttributeNames: {
         '#i': 'items',
       },
       ExpressionAttributeValues: {
-        ':r': DocumentClient.createSet([changelog + ':' + Date.now()])
+        ':r': new Set([changelog + ':' + Date.now()])
       },
       ReturnValues: 'ALL_NEW'
-    }).promise()
+    }))
   ]);
 
-  var feedItems = feedData.Attributes.items.values.map(function (feedItem) {
+  var feedItems = [];
+  feedData.Attributes.items.forEach(function (feedItem) {
     feedItem = feedItem.split(':');
-    return {
+    feedItems.push({
       repo: feedItem[0],
       when: parseInt(feedItem[1], 10)
-    };
+    });
   });
 
   if (feedItems.length < 20) {
@@ -241,23 +234,23 @@ Changelog.prototype.crawled = async function (changelog, meta) {
   }
 
   // And do a DB operation to remove the oldest items.
-  await DocumentClient.update({
-    TableName: self.feedsName,
+  await DynamoDB.send(new UpdateCommand({
+    TableName: FEEDS_TABLE_NAME,
     Key: { feed: 'recently_updated' },
     UpdateExpression: 'DELETE #i :r',
     ExpressionAttributeNames: {
       '#i': 'items',
     },
     ExpressionAttributeValues: {
-      ':r': DocumentClient.createSet(keysToRemove)
+      ':r': new Set(keysToRemove)
     },
     ReturnValues: 'ALL_NEW'
-  }).promise();
+  }));
 };
 
-Changelog.prototype._queryIndexForSecond = async function (second, key) {
-  var results = await DocumentClient.query({
-    TableName: this.changelogName,
+export const _queryIndexForSecond = async function (second, key) {
+  var results = await DynamoDB.send(new QueryCommand({
+    TableName: CHANGELOGS_TABLE_NAME,
     IndexName: 'second-changelog-index',
     KeyConditionExpression: '#s = :s',
     // This filter expression ensures that known good changelogs
@@ -273,7 +266,7 @@ Changelog.prototype._queryIndexForSecond = async function (second, key) {
       ':rejectedCutoff': (Date.now() - ONE_WEEK), // Force don't recrawl things rejected within the last week
       ':now': Date.now()
     }
-  }).promise();
+  }));
 
   var changelogs = results.Items.map(function (item) {
     return item.changelog;
@@ -283,7 +276,7 @@ Changelog.prototype._queryIndexForSecond = async function (second, key) {
     return changelogs;
   }
 
-  var moreChangelogs = await this._queryIndexForSecond(second, results.LastEvaluatedKey);
+  var moreChangelogs = await _queryIndexForSecond(second, results.LastEvaluatedKey);
 
   return changelogs.concat(moreChangelogs);
 };
@@ -291,7 +284,7 @@ Changelog.prototype._queryIndexForSecond = async function (second, key) {
 /**
  * Uses index to locate changelogs that need to be crawled in this second and adjacent seconds
  */
-Changelog.prototype.selectChangelogsToCrawl = async function (second) {
+export const selectChangelogsToCrawl = async function (second) {
   console.log(`RECRAWL - Checking second ${second}`);
-  return await this._queryIndexForSecond(second, null);
+  return await _queryIndexForSecond(second, null);
 }

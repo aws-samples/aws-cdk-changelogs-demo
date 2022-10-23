@@ -1,4 +1,4 @@
-var Presentation = require(process.cwd() + '/components/lib/presentation');
+import * as Presentation from './lib/presentation.js';
 
 var CHECK_INTERVAL = 30 * 1000;
 

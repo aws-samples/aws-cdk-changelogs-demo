@@ -1,9 +1,9 @@
 // This little program runs constantly, following changes
 // to NPM's CouchDB, and triggering the rest of the serverless
 // workflow to crawl the individual repos and Git repos
-var ChangesStream = require('changes-stream');
-var Changelog = require('./lib/changelog');
-var Discovery = require('./lib/npm-discovery');
+import ChangesStream from 'changes-stream';
+import * as Changelog from './lib/changelog.js';
+import * as Discovery from './lib/npm-discovery.js';
 var changes = new ChangesStream({
   db: 'https://skimdb.npmjs.com/registry',
   since: 'now'
@@ -17,18 +17,18 @@ changes.on('readable', async function () {
     return;
   }
 
-  var package = change.id;
+  var changedPackage = change.id;
 
-  console.log(`NPM - ${package} updated`);
+  console.log(`NPM - ${changedPackage} updated`);
 
-  var repos = await Discovery.packageNamesToRepos([package]);
+  var repos = await Discovery.packageNamesToRepos([changedPackage]);
 
   if (!repos.length) {
     // No repo found
     return;
   }
 
-  console.log(`NPM - ${package} has repo: ${repos[0]}`);
+  console.log(`NPM - ${changedPackage} has repo: ${repos[0]}`);
 
   await Changelog.upsert(repos[0]);
 });

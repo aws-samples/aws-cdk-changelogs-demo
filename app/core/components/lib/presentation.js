@@ -1,107 +1,99 @@
-var marked = require('marked');
-var highlight = require('highlight.js');
-var fs = require('fs');
-var _ = require('lodash');
-var AWS = require('aws-sdk');
-var S3 = new AWS.S3();
+import { marked } from 'marked';
+import highlight from 'highlight.js';
+import fs from 'fs';
+import _ from 'lodash';
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
+var S3 = new S3Client();
 
-// The presentation layer. This is the code which generates and saves the
-// API responses and HTML pages that are the public facing interface of this
-// service
-function Presentation() {
-  // Build a custom markdown renderer. This lets us clean up the changelogs a bit
-  this.renderer = new marked.Renderer();
+// Build a custom markdown renderer. This lets us clean up the changelogs a bit
+var renderer = new marked.Renderer();
 
-  // Force all heading inside the changelog version descriptions to be h4.
-  // Prevents giant headings from ruining the look of the page.
-  this.renderer.heading = function (text) {
-    return '<h4>' + text + '</h4>';
-  };
+// Force all heading inside the changelog version descriptions to be h4.
+// Prevents giant headings from ruining the look of the page.
+renderer.heading = function (text) {
+  return '<h4>' + text + '</h4>';
+};
 
-  // Ignore all horizontal rules in the changelog bodies.
-  this.renderer.hr = function () {
-    return '';
-  };
+// Ignore all horizontal rules in the changelog bodies.
+renderer.hr = function () {
+  return '';
+};
 
-  // Ignore inline HTML, to avoid XSS
-  this.renderer.html = function () {
-    return '';
-  };
+// Ignore inline HTML, to avoid XSS
+renderer.html = function () {
+  return '';
+};
 
-  marked.setOptions({
-    sanitize: false,
-    renderer: this.renderer,
-    highlight: function (code) {
-      return highlight.highlightAuto(code).value;
-    }
-  });
+marked.setOptions({
+  sanitize: false,
+  renderer: renderer,
+  highlight: function (code) {
+    return highlight.highlightAuto(code).value;
+  }
+});
 
-  this.rawTemplates = {
-    changelog: fs.readFileSync(process.cwd() + '/templates/changelog.html'),
-    homepage: fs.readFileSync(process.cwd() + '/templates/index.html')
-  };
-  this.templates = {
-    changelog: _.template(this.rawTemplates.changelog),
-    homepage: _.template(this.rawTemplates.homepage)
-  };
+var rawTemplates = {
+  changelog: fs.readFileSync(process.cwd() + '/templates/changelog.html'),
+  homepage: fs.readFileSync(process.cwd() + '/templates/index.html')
+};
+var templates = {
+  changelog: _.template(rawTemplates.changelog),
+  homepage: _.template(rawTemplates.homepage)
+};
 
-  this.months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December'
-  ];
+var months = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+];
 
-  this.API_BUCKET_NAME = process.env.API_BUCKET_NAME || 'API bucket name not set';
-  this.WEB_BUCKET_NAME = process.env.WEB_BUCKET_NAME || 'Web bucket name not set';
-}
-module.exports = new Presentation();
+const API_BUCKET_NAME = process.env.API_BUCKET_NAME || 'API bucket name not set';
+const WEB_BUCKET_NAME = process.env.WEB_BUCKET_NAME || 'Web bucket name not set';
 
-var Changelogs = require(process.cwd() + '/components/lib/changelog');
+import * as Changelogs from './changelog.js';
 
 /**
   * Render the changelog into a JSON document and store it in the S3 bucket
 **/
-Presentation.prototype.saveApiResponse = async function (repoName, changelog) {
-  return await S3.putObject({
-    Bucket: this.API_BUCKET_NAME,
+export const saveApiResponse = async function (repoName, changelog) {
+  return await S3.send(new PutObjectCommand({
+    Bucket: API_BUCKET_NAME,
     Key: 'api/github/' + repoName + '/index.json',
     Body: JSON.stringify(changelog),
     ContentType: 'application/json',
     ACL: 'public-read',
     CacheControl: 'public, max-age=60'
-  }).promise();
+  }));
 };
 
 /**
   * Render the feed of recently crawled changelogs into a JSON document and store in the S3 bucket
 **/
-Presentation.prototype.saveRecentlyCrawled = async function (recentlyCrawled) {
-  return await S3.putObject({
-    Bucket: this.API_BUCKET_NAME,
+export const saveRecentlyCrawled = async function (recentlyCrawled) {
+  return await S3.send(new PutObjectCommand({
+    Bucket: API_BUCKET_NAME,
     Key: 'api/recently-crawled/index.json',
     Body: JSON.stringify(recentlyCrawled),
     ContentType: 'application/json',
     ACL: 'public-read',
     CacheControl: 'public, max-age=60'
-  }).promise();
+  }));
 };
 
 /**
   * Render an HTML page representing a changelog and store it in the S3 bucket
 **/
-Presentation.prototype.saveWebPage = async function (repoName, changelog) {
-  var self = this;
-
-  var html = this.templates.changelog({
+export const saveWebPage = async function (repoName, changelog) {
+  var html = templates.changelog({
     apiUrl: changelog.href,
     repoUrl: changelog.repo,
     changelogSource: changelog.changelog,
@@ -111,12 +103,12 @@ Presentation.prototype.saveWebPage = async function (repoName, changelog) {
 
       if (version.date) {
         var versionDate = new Date(version.date);
-        dateString = self.months[versionDate.getMonth()] + ' ' +
+        dateString = months[versionDate.getMonth()] + ' ' +
           versionDate.getDate() + ', ' +
           versionDate.getFullYear();
       }
 
-      var versionBody = marked(version.body);
+      var versionBody = marked.parse(version.body);
 
       return {
         version: version.version,
@@ -126,20 +118,20 @@ Presentation.prototype.saveWebPage = async function (repoName, changelog) {
     })
   });
 
-  return await S3.putObject({
-    Bucket: this.WEB_BUCKET_NAME,
+  return await S3.send(new PutObjectCommand({
+    Bucket: WEB_BUCKET_NAME,
     Key: 'github/' + repoName + '/index.html',
     Body: html,
     ContentType: 'text/html',
     ACL: 'public-read',
     CacheControl: 'public, max-age=60'
-  }).promise();
+  }));
 };
 
 /**
   * Regenerate the homepage and save it to the web S3 bucket
 **/
-Presentation.prototype.regenerateHomePage = async function () {
+export const regenerateHomePage = async function () {
   // Get the list of recently crawled changelogs
   var feed = await Changelogs.recentlyUpdated();
 
@@ -151,16 +143,16 @@ Presentation.prototype.regenerateHomePage = async function () {
   // since DynamoDB returns the bulk get results in random order.
   metadata = _.sortBy(metadata, 'crawledAt').reverse();
 
-  var html = this.templates.homepage({
+  var html = templates.homepage({
     feed: metadata
   });
 
-  return await S3.putObject({
-    Bucket: this.WEB_BUCKET_NAME,
+  return await S3.send(new PutObjectCommand({
+    Bucket: WEB_BUCKET_NAME,
     Key: 'index.html',
     Body: html,
     ContentType: 'text/html',
     ACL: 'public-read',
     CacheControl: 'public, max-age=60'
-  }).promise();
+  }));
 };

@@ -1,30 +1,34 @@
 // Start the NPM watcher
-require('./components/npm-watcher');
+//import './components/npm-watcher.js';
 
 // Start the PyPI watcher
-require('./components/pypi-watcher');
+//import './components/pypi-watcher.js';
 
 // Start the Ruby Gems watcher
-require('./components/rubygem-watcher');
+//import './components/rubygem-watcher.js';
 
 // Start the recrawl watcher
-require('./components/recrawl-watcher');
+import './components/recrawl-watcher.js';
 
 // Start the homepage regenerator
-require('./components/regenerate-homepage');
+//import './components/regenerate-homepage.js';
 
-var app = require('express')();
-var server = require('http').Server(app);
-var cors = require('cors');
+import express from 'express';
+const app = express();
+
+import http from 'http';
+var server = http.Server(app);
+
+import cors from 'cors';
 
 // Accept requests from all origins
 app.use(cors());
 
 // Setup the websocket broadcast module
-Broadcast = require(process.cwd() + '/components/lib/broadcast');
+import * as Broadcast from './components/lib/broadcast.js';
 Broadcast.setup(server);
 
-var Indexer = require(process.cwd() + '/components/lib/indexer');
+import * as Indexer from './components/lib/indexer.js';
 
 // This supplies a route for the application load balancer
 // to healthcheck on.

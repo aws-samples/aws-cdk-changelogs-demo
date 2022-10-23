@@ -1,12 +1,9 @@
 {
   "description": "Setup for tests for various functions",
   "devDependencies": {
-    "aws-cdk-lib": "2.40.0",
+    "aws-cdk-lib": "2.47.0",
     "chai": "3.5.0",
-    "constructs": "10.0.5",
-    "copy-dir": "0.4.0",
     "lodash": "^4.17.21",
-    "mocha": "^7.1.1",
     "ts-node": "9.0.0",
     "typescript": "4.0.5"
   },

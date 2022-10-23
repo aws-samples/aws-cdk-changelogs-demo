@@ -1,22 +1,20 @@
-const request = require('request-promise-native');
-const URL = require('url');
-const _ = require('lodash');
+import got from 'got';
+import URL from 'url';
+import _ from 'lodash';
 
-var RubyGems = function () {
-  this.request = request.defaults({
-    headers: { 'User-Agent': 'changelogs.md' },
-    resolveWithFullResponse: true
-  });
+const httpOptions = {
+  headers: {
+    'User-Agent': 'changelogs.md'
+  }
 };
-module.exports = new RubyGems();
 
-const Changelog = require(process.cwd() + '/components/lib/changelog');
+import * as Changelog from './changelog.js';
 
 /**
   * Fetch the list of recently released gems from RubyGems
 **/
-RubyGems.prototype.fetchRecentPackages = async function () {
-  var response = await this.request('https://rubygems.org/api/v1/activity/just_updated.json');
+export const fetchRecentPackages = async function () {
+  var response = await got('https://rubygems.org/api/v1/activity/just_updated.json', httpOptions);
 
   if (response.statusCode !== 200) {
     console.error('Failed to fetch https://rubygems.org/api/v1/activity/just_updated.json\n', response);
@@ -37,18 +35,18 @@ RubyGems.prototype.fetchRecentPackages = async function () {
 /**
   * Extract the Github repos for each gem in a list
 **/
-RubyGems.prototype.packageListToRepos = function (packageList) {
+export const packageListToRepos = function (packageList) {
   // Fetch the basic top level links
   var links = [];
 
   // Extract all the relevant links from the list of packages.
-  for (var package of packageList) {
-    if (package.source_code_uri) {
-      links.push(package.source_code_uri.toLowerCase());
+  for (var packageRef of packageList) {
+    if (packageRef.source_code_uri) {
+      links.push(packageRef.source_code_uri.toLowerCase());
     }
 
-    if (package.homepage_uri) {
-      links.push(package.homepage_uri.toLowerCase());
+    if (packageRef.homepage_uri) {
+      links.push(packageRef.homepage_uri.toLowerCase());
     }
   }
 
@@ -76,10 +74,10 @@ RubyGems.prototype.packageListToRepos = function (packageList) {
   * Entry point. Fetch the list of recent packages from Ruby Gems, find the
   * github repos referenced from them, and upsert them for crawling
 **/
-RubyGems.prototype.upsertRecentPackageRepos = async function () {
-  var packageList = await this.fetchRecentPackages();
+export const upsertRecentPackageRepos = async function () {
+  var packageList = await fetchRecentPackages();
 
-  var repos = this.packageListToRepos(packageList);
+  var repos = packageListToRepos(packageList);
 
   console.log(`RUBY - Found ${repos.length} repos`);
 

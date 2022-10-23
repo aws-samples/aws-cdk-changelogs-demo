@@ -2,10 +2,12 @@ import { App, Stack, Duration } from 'aws-cdk-lib';
 import { aws_ec2 as ec2 } from 'aws-cdk-lib';
 import { aws_s3 as s3 } from 'aws-cdk-lib';
 import { aws_ecs as ecs } from 'aws-cdk-lib';
+import { aws_ecr_assets as ecrAssets } from 'aws-cdk-lib';
 import { aws_secretsmanager as secretsmanager } from 'aws-cdk-lib';
 import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
 import { aws_logs as logs } from 'aws-cdk-lib';
 import { aws_elasticloadbalancingv2 as elbv2 } from 'aws-cdk-lib';
+
 
 export interface CoreProps {
   vpc: ec2.Vpc,
@@ -30,10 +32,15 @@ export class Core extends Stack {
     this.taskDefinition = new ecs.FargateTaskDefinition(this, 'core-task-definition', {
       cpu: 1024,
       memoryLimitMiB: 2048,
+      runtimePlatform: {
+        cpuArchitecture: ecs.CpuArchitecture.ARM64,
+      }
     });
 
     var container = this.taskDefinition.addContainer("core", {
-      image: ecs.ContainerImage.fromAsset("./app/core"),
+      image: ecs.ContainerImage.fromAsset("./app/core", {
+        platform: ecrAssets.Platform.LINUX_ARM64
+      }),
       environment: {
         CHANGELOGS_TABLE_NAME: props.changelogsTable.tableName,
         FEEDS_TABLE_NAME: props.feedsTable.tableName,

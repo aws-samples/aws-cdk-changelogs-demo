@@ -1,17 +1,12 @@
-function Orchestrator() {
-
-}
-module.exports = new Orchestrator();
-
-var Crawl = require(process.cwd() + '/components/lib/crawl');
-var Presentation = require(process.cwd() + '/components/lib/presentation');
-var Indexer = require(process.cwd() + '/components/lib/indexer');
-var Broadcast = require(process.cwd() + '/components/lib/broadcast');
+import * as Crawl from './crawl.js';
+import * as Presentation from './presentation.js';
+import * as Indexer from './indexer.js';
+import * as Broadcast from './broadcast.js';
 
 /**
  * changelog: string
  */
-Orchestrator.prototype.crawlRepo = async function (changelog) {
+export const crawlRepo = async function (changelog) {
   // Normalize incoming changelogs
   changelog = changelog.trim().toLowerCase();
 

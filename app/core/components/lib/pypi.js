@@ -1,23 +1,21 @@
-const request = require('request-promise-native');
-const cheerio = require('cheerio');
-const URL = require('url');
-const _ = require('lodash');
+import got from 'got';
+import URL from 'url';
+import cheerio from 'cheerio';
+import _ from 'lodash';
 
-var PyPI = function () {
-  this.request = request.defaults({
-    headers: { 'User-Agent': 'changelogs.md' },
-    resolveWithFullResponse: true
-  });
+const httpOptions = {
+  headers: {
+    'User-Agent': 'changelogs.md'
+  }
 };
-module.exports = new PyPI();
 
-const Changelog = require(process.cwd() + '/components/lib/changelog');
+import * as Changelog from './changelog.js';
 
 /**
   * Fetch the list of recently released packages from PyPI
 **/
-PyPI.prototype.fetchXMLFromPyPI = async function () {
-  var response = await this.request('https://pypi.org/rss/updates.xml');
+export const fetchXMLFromPyPI = async function () {
+  var response = await got('https://pypi.org/rss/updates.xml', httpOptions);
 
   if (response.statusCode !== 200) {
     console.error('Failed to fetch https://pypi.org/rss/updates.xml\n', response);
@@ -30,7 +28,7 @@ PyPI.prototype.fetchXMLFromPyPI = async function () {
 /**
   * Takes plaintext XML and turns it into a list of the package names in that XML
 **/
-PyPI.prototype.parsePackageNamesFromXML = function (xml) {
+export const parsePackageNamesFromXML = function (xml) {
   var $ = cheerio.load(xml, { xmlMode: true });
   var packageNames = [];
 
@@ -50,8 +48,8 @@ PyPI.prototype.parsePackageNamesFromXML = function (xml) {
 /**
   * Fetch the details of a package from PyPI
 **/
-PyPI.prototype.packageNameToRepo = async function (packageName) {
-  var response = await this.request(`https://pypi.org/pypi/${packageName}/json`);
+export const packageNameToRepo = async function (packageName) {
+  var response = await got(`https://pypi.org/pypi/${packageName}/json`, httpOptions);
 
   if (response.statusCode !== 200) {
     console.error(`PYPI - Failed to fetch https://pypi.org/pypi/${packageName}/json\n`, response);
@@ -109,14 +107,14 @@ PyPI.prototype.packageNameToRepo = async function (packageName) {
   * metadata for each package to find the Github repo, upsert the repo for
   * crawling.
 **/
-PyPI.prototype.upsertRecentPackageRepos = async function () {
-  var xml = await this.fetchXMLFromPyPI();
+export const upsertRecentPackageRepos = async function () {
+  var xml = await fetchXMLFromPyPI();
 
-  var packages = await this.parsePackageNamesFromXML(xml);
+  var packages = await parsePackageNamesFromXML(xml);
 
   var packageRepoPromises = [];
-  for (var package of packages) {
-    packageRepoPromises.push(this.packageNameToRepo(package));
+  for (var packageRef of packages) {
+    packageRepoPromises.push(packageNameToRepo(packageRef));
   }
 
   var packageRepos = await Promise.all(packageRepoPromises);

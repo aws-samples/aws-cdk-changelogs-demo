@@ -1,6 +1,6 @@
 // Handler that checks RubyGems recently updated packages once a minute
 // to identify Ruby repositories to crawl
-var RubyGems = require(process.cwd() + '/components/lib/ruby-gems');
+import * as RubyGems from './lib/ruby-gems.js';
 
 var CHECK_INTERVAL = 120 * 1000;
 

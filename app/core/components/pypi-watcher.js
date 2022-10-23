@@ -1,4 +1,4 @@
-PyPI = require(process.cwd() + '/components/lib/pypi');
+import * as PyPI from './lib/pypi.js';
 
 var CHECK_INTERVAL = 120 * 1000;
 

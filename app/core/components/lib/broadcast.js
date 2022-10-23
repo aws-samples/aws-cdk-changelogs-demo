@@ -1,10 +1,12 @@
-function Broadcast() {
-  this.io = null;
-}
-module.exports = new Broadcast();
+import { Server as SocketIOServer } from 'socket.io';
+var io = null;
 
-Broadcast.prototype.setup = function (server) {
-  this.io = require('socket.io')(server, {
+/**
+ * Given an HTTP server, attach a Socket.io instance to it.
+ * @param {*} server
+ */
+export const setup = function (server) {
+  io = new SocketIOServer(server, {
     pingTimeout: 60000,
     cors: {
       origin: "*",
@@ -13,7 +15,7 @@ Broadcast.prototype.setup = function (server) {
   });
 
   // Greet new connections to the socket.io endpoint
-  this.io.on('connection', function (socket) {
+  io.on('connection', function (socket) {
     console.log('BROADCAST - New connection');
     socket.emit('welcome');
   });
@@ -22,7 +24,7 @@ Broadcast.prototype.setup = function (server) {
 /**
   * Send via Redis pub/sub
 **/
-Broadcast.prototype.notify = function (changelog, details) {
+export const notify = function (changelog, details) {
   var payload = {
     changelog: changelog,
     crawledAt: details.crawledAt,
@@ -32,9 +34,9 @@ Broadcast.prototype.notify = function (changelog, details) {
     version: details.contents[0].version
   };
 
-  if (this.io) {
+  if (io) {
     console.log(`BROADCAST - ${changelog}`);
-    this.io.emit('crawled_repo', payload);
+    io.emit('crawled_repo', payload);
   } else {
     console.error('Broadcast IO not yet setup');
   }

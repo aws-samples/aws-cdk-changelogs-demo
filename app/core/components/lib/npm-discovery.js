@@ -1,22 +1,20 @@
-const request = require('request-promise-native');
-const URL = require('url');
+import got from 'got';
+import URL from 'url';
 
-var Discovery = function () {
-  this.request = request.defaults({
-    headers: { 'User-Agent': 'changelogs.md' },
-    resolveWithFullResponse: true
-  });
+const httpOptions = {
+  headers: {
+    'User-Agent': 'changelogs.md'
+  }
 };
-module.exports = new Discovery();
 
 /**
   * Fetch the details of a package from NPM
 **/
-Discovery.prototype.packageNameToDetails = async function (packageName) {
-  subpath = packageName + '/latest';
+export const packageNameToDetails = async function (packageName) {
+  var subpath = packageName + '/latest';
 
   try {
-    var response = await this.request(`https://registry.npmjs.org/${subpath}`);
+    var response = await got(`https://registry.npmjs.org/${subpath}`, httpOptions);
   } catch (e) {
     console.error(`Failed to find package: https://registry.npmjs.org/${subpath}: ${e.error}`);
     return;
@@ -40,12 +38,12 @@ Discovery.prototype.packageNameToDetails = async function (packageName) {
 /**
   * Turn a list of recently updated packages into a list of Github repos
 **/
-Discovery.prototype.packageNamesToRepos = async function (packageList) {
+export const packageNamesToRepos = async function (packageList) {
   var promisePackageInfo = [];
   var packageInfo = [];
 
   for (var packageName of packageList) {
-    promisePackageInfo.push(this.packageNameToDetails(packageName));
+    promisePackageInfo.push(packageNameToDetails(packageName));
   }
 
   packageInfo = await Promise.all(promisePackageInfo);

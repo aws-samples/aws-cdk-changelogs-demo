@@ -1,12 +1,8 @@
-var AWS = require('aws-sdk');
-var DocumentClient = new AWS.DynamoDB.DocumentClient();
-var _ = require('lodash');
+import { QueryCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDB } from "./dynamodb-doc-client.js";
+import _ from 'lodash';
 
-function Indexer() {
-  this.searchIndex = process.env.SEARCH_INDEX_TABLE_NAME || 'search index table name not set';
-}
-module.exports = new Indexer();
-
+const SEARCH_INDEX_TABLE_NAME = process.env.SEARCH_INDEX_TABLE_NAME || 'search index table name not set';
 const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
 /**
@@ -15,7 +11,7 @@ const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
   * where the score is roughly equivalent to how much of each token is
   # made up of the fragment.
 **/
-Indexer.prototype.addToIndex = async function(changelog) {
+export const addToIndex = async function (changelog) {
   var keywords = changelog.split(/[\/-]/g);
   var frags = [];
   var keyword;
@@ -75,7 +71,7 @@ Indexer.prototype.addToIndex = async function(changelog) {
       RequestItems: {}
     };
 
-    batchOperation.RequestItems[this.searchIndex] = fragChunk.map(function(frag) {
+    batchOperation.RequestItems[SEARCH_INDEX_TABLE_NAME] = fragChunk.map(function (frag) {
       return {
         PutRequest: {
           Item: {
@@ -87,7 +83,7 @@ Indexer.prototype.addToIndex = async function(changelog) {
       };
     });
 
-    promises.push(DocumentClient.batchWrite(batchOperation).promise());
+    promises.push(DynamoDB.send(new BatchWriteCommand(batchOperation)));
   }
 
   // Wait for all the batch operations to finish
@@ -97,13 +93,13 @@ Indexer.prototype.addToIndex = async function(changelog) {
 /**
   * For a given fragment return potentially relevant completions
 **/
-Indexer.prototype.completion = async function(fragment) {
+export const completion = async function (fragment) {
   // This is used to filter out expired fragments that haven't
   // yet been physically removed from the table by DynamoDB
   var now = Math.floor(Date.now() / 1000);
 
-  var results = await DocumentClient.query({
-    TableName: this.searchIndex,
+  var results = await DynamoDB.send(new QueryCommand({
+    TableName: SEARCH_INDEX_TABLE_NAME,
     KeyConditionExpression: 'fragment = :frag',
     FilterExpression: 'validUntil > :now',
     ExpressionAttributeValues: {
@@ -112,7 +108,7 @@ Indexer.prototype.completion = async function(fragment) {
     },
     Limit: 10,
     ScanIndexForward: false
-  }).promise();
+  }));
 
   // Post process the results to split the completion back out from
   // the score, and turn the score back into a real number

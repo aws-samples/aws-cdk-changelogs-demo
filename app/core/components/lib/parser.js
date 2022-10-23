@@ -1,18 +1,14 @@
-var _ = require('lodash');
-var findVersions = import('find-versions').findVersions;
-var parser = require('semver-parser');
-var parseSemVer = parser.parseSemVer;
-var compareSemVer = parser.compareSemVer;
+import _ from 'lodash';
+import findVersions from 'find-versions';
+import { compareSemVer, parseSemVer } from 'semver-parser';
 
 // Given the raw content of a changelogs.md file return a processed version of
 // the changelog that has been split up into versions, with versions and dates
 // nicely extracted.
-function Parser() { }
-module.exports = new Parser();
 
 var falsePositives = /(may)|(before)|(to)|(from)|(on)/;
 var outsideReasonableTime = 1000 * 60 * 60 * 24 * 365 * 20;
-Parser.prototype.isFalsePositive = function (candidate, date) {
+export const isFalsePositive = function (candidate, date) {
   if (candidate.match(falsePositives)) {
     return true;
   }
@@ -38,7 +34,7 @@ var formats = [
   // European human format
   /\d{1,2}\s(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december),?\s\d{4}/gi
 ];
-Parser.prototype.dateSearch = function (string) {
+export const dateSearch = function (string) {
   var matches;
 
   for (var f in formats) {
@@ -70,9 +66,7 @@ Parser.prototype.dateSearch = function (string) {
   * @returns {null|object}
 **/
 var versionNumber = /\d+\.\d+(\.\d+)?/g;
-Parser.prototype.extractHeaderInfo = function (context) {
-  var self = this;
-
+export const extractHeaderInfo = function (context) {
   // Preprocess the target a bit to remove extra whitespace
   // and other characters that can confuse the NLP
   var target = context[0];
@@ -173,7 +167,7 @@ Parser.prototype.extractHeaderInfo = function (context) {
   //console.log(target);
   //console.log('Found version', version);
   //console.log(dateTarget);
-  var date = self.dateSearch(dateTarget);
+  var date = dateSearch(dateTarget);
   //console.log('Found date', date);
 
   if ((version && date > 0) || (version && markupWeight > 0)) {
@@ -188,7 +182,7 @@ Parser.prototype.extractHeaderInfo = function (context) {
 
 // This function strips out top level HTML comments from the Markdown but leaves
 // HTML comments that are inside Markdown code blocks.
-Parser.prototype.removeHTMLComments = function (doc) {
+export const removeHTMLComments = function (doc) {
   var docLength = doc.length;
   var strippedContent = '';
   var commentDepth = 0;
@@ -236,9 +230,9 @@ Parser.prototype.removeHTMLComments = function (doc) {
   return strippedContent;
 };
 
-Parser.prototype.parse = function (lines) {
+export const parse = function (lines) {
   // Preprocess the document to remove top level HTML comments and their content
-  lines = this.removeHTMLComments(lines.toString());
+  lines = removeHTMLComments(lines.toString());
 
   // Split the markdown into lines
   lines = lines.split('\n');
@@ -262,7 +256,7 @@ Parser.prototype.parse = function (lines) {
       block.push('');
     }
 
-    var header = this.extractHeaderInfo(block);
+    var header = extractHeaderInfo(block);
 
     // Filter out lines that are just markdown underlines
     var count = (block[0].match(/=/g) || []).length;
