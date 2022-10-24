@@ -256,7 +256,12 @@ export const parse = function (lines) {
       block.push('');
     }
 
-    var header = extractHeaderInfo(block);
+    try {
+      var header = extractHeaderInfo(block);
+    } catch (e) {
+      console.error(`Failed to extract header from: ${block}`, e);
+      continue;
+    }
 
     // Filter out lines that are just markdown underlines
     var count = (block[0].match(/=/g) || []).length;
