@@ -1,5 +1,6 @@
 import { GetCommand, QueryCommand, BatchGetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoDB } from "./dynamodb-doc-client.js";
+import LRUCache from 'lru-cache';
 import _ from 'lodash';
 
 var ONE_DAY = 86400000;
@@ -12,6 +13,10 @@ const FEEDS_TABLE_NAME = process.env.FEEDS_TABLE_NAME || 'no feed table name set
 const DISCOVERED_TOPIC_ARN = process.env.DISCOVERED_TOPIC_ARN || 'no discovered changelog topic arn set';
 
 import * as Orchestrator from './orchestrator.js';
+
+const cache = new LRUCache({
+  max: 1000
+});
 
 /**
   * Check to see if we have crawled this changelog before in the past,
@@ -56,6 +61,13 @@ export const bulkGetMetadata = async function (changelogs) {
   * @param {function} done - Callback
 **/
 export const upsertOne = async function (changelog) {
+  if (cache.get(changelog)) {
+    console.log(`REPO - ${changelog} already recently noticed`);
+    return;
+  } else {
+    cache.set(changelog, true);
+  }
+
   console.log(`REPO - ${changelog} noticed`);
 
   // Select a second of the day on which to recrawl this repo
