@@ -2,7 +2,7 @@
   "type": "module",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.194.0",
+    "@aws-sdk/client-s3": "^3.350.0",
     "@aws-sdk/lib-dynamodb": "^3.194.0",
     "@octokit/auth-token": "2.4.0",
     "@octokit/rest": "16.43.1",
